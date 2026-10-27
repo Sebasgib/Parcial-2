@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Barras Bravas FPS</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud" class="hidden">
+  <div id="crosshair"></div>
+  <div id="hitmark"></div>
+  <div id="top">
+    <div id="wave-info"></div>
+    <div id="kills"></div>
+  </div>
+  <canvas id="radar" width="130" height="130"></canvas>
+  <div id="hpbox">
+    <div class="lbl">AGUANTE</div>
+    <div id="hp-bar"><div id="hp-fill"></div></div>
+    <div id="hp-text">100</div>
+  </div>
+  <div id="wbox"><div id="wname"></div><div id="wammo"></div></div>
+  <div id="slots"></div>
+  <div id="msg"><div id="msg-main"></div><div id="msg-sub"></div></div>
+  <div id="dmg"></div>
+  <div id="gasfx"></div>
+  <div id="policefx"></div>
+</div>
+
+<div id="pause" class="overlay hidden">
+  <div class="panel">
+    <h2>PAUSA</h2>
+    <p>Haz clic para volver a la tribuna</p>
+    <p class="keys">WASD mover · Mouse apuntar · Clic atacar · 1-6 / rueda armas · Q arma anterior · Espacio saltar · Shift correr · M sonido</p>
+  </div>
+</div>
+
+<div id="end" class="overlay hidden">
+  <div class="panel">
+    <h2 id="end-title"></h2>
+    <p id="end-stats"></p>
+    <div class="row">
+      <button id="retry" class="big">REINTENTAR</button>
+      <button id="tomenu" class="big alt">MENÚ</button>
+    </div>
+  </div>
+</div>
+
+<div id="menu" class="overlay">
+  <div class="panel wide">
+    <h1>BARRAS BRAVAS <small>FPS</small></h1>
+    <p class="tag">Defiende tu tribuna. Aguanta a la barra rival... y a los tombos.</p>
+
+    <h3>1 · Tu barra</h3>
+    <div id="teams-own" class="teams"></div>
+    <h3>2 · Barra rival</h3>
+    <div id="teams-rival" class="teams"></div>
+    <h3>3 · Escenario</h3>
+    <div id="levels" class="levels"></div>
+
+    <button id="play" class="big">¡A LA TRIBUNA!</button>
+    <p class="keys">WASD mover · Mouse apuntar · Clic izq. atacar · 1-6 o rueda para cambiar de arma · Q arma anterior · Espacio saltar · Shift correr · M sonido</p>
+    <p class="keys arms">Armas: Bate · Cadena · Botellas · Bengalas · Papa bomba · Resortera</p>
+  </div>
+</div>
+
+<script src="js/lib/three.min.js"></script>
+<script src="js/data.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/textures.js"></script>
+<script src="js/characters.js"></script>
+<script src="js/levels.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>

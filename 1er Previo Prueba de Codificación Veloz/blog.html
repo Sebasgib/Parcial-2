@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog - Juan Sebastian Torres Castellanos</title>
+    <!-- Iconos multimedia (Bootstrap Icons, solo CSS/fuente) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Vinculación de la hoja de estilo externa (compartida con index.html) -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="scroll-progress" id="scroll-progress" aria-hidden="true"></div>
+
+    <!-- Cabecera del Blog -->
+    <header class="header-blog">
+        <div class="container header-blog-container">
+            <div class="blog-brand">
+                <h1>Blog Multimedia</h1>
+                <p>Notas sobre diseño y desarrollo</p>
+            </div>
+            <nav class="site-nav" aria-label="Navegación principal">
+                <a href="index.html">Inicio</a>
+                <a href="blog.html" class="active" aria-current="page">Blog</a>
+                <a href="contacto.html">Contacto</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Cuerpo del blog: sidebar de navegación + contenido principal -->
+    <div class="container blog-layout">
+
+        <!-- Barra lateral de navegación -->
+        <aside class="sidebar">
+            <nav class="sidebar-nav reveal" aria-label="Categorías del blog">
+                <h2>Categorías</h2>
+                <ul id="lista-categorias">
+                    <li><a href="#" class="active" data-filter="todas"><i class="bi bi-grid"></i> Todas</a></li>
+                    <li><a href="#" data-filter="diseno-web"><i class="bi bi-globe2"></i> Diseño Web</a></li>
+                    <li><a href="#" data-filter="desarrollo"><i class="bi bi-code-slash"></i> Desarrollo Front-end</a></li>
+                    <li><a href="#" data-filter="ui-ux"><i class="bi bi-palette2"></i> UI / UX</a></li>
+                    <li><a href="#" data-filter="multimedia"><i class="bi bi-camera-reels"></i> Producción Multimedia</a></li>
+                    <li><a href="#" data-filter="accesibilidad"><i class="bi bi-universal-access"></i> Accesibilidad</a></li>
+                </ul>
+
+                <h2>Etiquetas</h2>
+                <div class="tag-list" id="lista-etiquetas">
+                    <a href="#" class="skill-badge" data-tag="html">HTML</a>
+                    <a href="#" class="skill-badge" data-tag="css">CSS</a>
+                    <a href="#" class="skill-badge" data-tag="flexbox">Flexbox</a>
+                    <a href="#" class="skill-badge" data-tag="ux">UX</a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Sección principal con rejilla de artículos -->
+        <main class="main-content">
+            <p id="estado-filtro" class="visually-hidden" role="status" aria-live="polite"></p>
+
+            <section class="articles-grid" id="articulos" aria-label="Artículos del blog">
+
+                <article class="post-card reveal" data-category="diseno-web" data-tags="html css">
+                    <span class="post-category"><i class="bi bi-globe2"></i> Diseño Web</span>
+                    <h3>Principios del diseño web adaptativo</h3>
+                    <p class="post-meta">Publicado el 12 de marzo de 2026</p>
+                    <p>Un recorrido por las bases del diseño responsive: unidades flexibles, imágenes fluidas y media queries para adaptarse a cualquier dispositivo.</p>
+                    <a href="#" class="read-more">Leer más <i class="bi bi-arrow-right"></i></a>
+                </article>
+
+                <article class="post-card reveal" data-category="desarrollo" data-tags="css flexbox">
+                    <span class="post-category"><i class="bi bi-code-slash"></i> Desarrollo</span>
+                    <h3>Flexbox de principio a fin</h3>
+                    <p class="post-meta">Publicado el 2 de marzo de 2026</p>
+                    <p>Cómo construir layouts limpios y mantenibles usando exclusivamente Flexbox, sin depender de posicionamientos complejos.</p>
+                    <a href="#" class="read-more">Leer más <i class="bi bi-arrow-right"></i></a>
+                </article>
+
+                <article class="post-card reveal" data-category="ui-ux" data-tags="ux">
+                    <span class="post-category"><i class="bi bi-palette2"></i> UI / UX</span>
+                    <h3>Tendencias de interfaz para 2026</h3>
+                    <p class="post-meta">Publicado el 20 de febrero de 2026</p>
+                    <p>Analizamos las tendencias visuales e interactivas que están marcando el diseño de producto este año.</p>
+                    <a href="#" class="read-more">Leer más <i class="bi bi-arrow-right"></i></a>
+                </article>
+
+                <article class="post-card reveal" data-category="multimedia">
+                    <span class="post-category"><i class="bi bi-camera-reels"></i> Multimedia</span>
+                    <h3>Optimización de recursos audiovisuales</h3>
+                    <p class="post-meta">Publicado el 8 de febrero de 2026</p>
+                    <p>Buenas prácticas para comprimir y servir imagen, audio y video sin sacrificar calidad percibida.</p>
+                    <a href="#" class="read-more">Leer más <i class="bi bi-arrow-right"></i></a>
+                </article>
+
+                <article class="post-card reveal" data-category="accesibilidad" data-tags="html">
+                    <span class="post-category"><i class="bi bi-universal-access"></i> Accesibilidad</span>
+                    <h3>Semántica HTML y accesibilidad</h3>
+                    <p class="post-meta">Publicado el 25 de enero de 2026</p>
+                    <p>Por qué elegir la etiqueta correcta (header, nav, main, aside, footer) mejora la experiencia de todos los usuarios.</p>
+                    <a href="#" class="read-more">Leer más <i class="bi bi-arrow-right"></i></a>
+                </article>
+
+                <article class="post-card reveal" data-category="desarrollo" data-tags="css">
+                    <span class="post-category"><i class="bi bi-code-slash"></i> Desarrollo</span>
+                    <h3>Variables CSS para temas consistentes</h3>
+                    <p class="post-meta">Publicado el 10 de enero de 2026</p>
+                    <p>Cómo centralizar colores y espaciados con custom properties para mantener coherencia visual en todo el sitio.</p>
+                    <a href="#" class="read-more">Leer más <i class="bi bi-arrow-right"></i></a>
+                </article>
+
+                <article class="post-card reveal" data-category="ui-ux" data-tags="ux">
+                    <span class="post-category"><i class="bi bi-palette2"></i> UI / UX</span>
+                    <h3>Microinteracciones que mejoran la experiencia</h3>
+                    <p class="post-meta">Publicado el 5 de abril de 2026</p>
+                    <p>Pequeñas animaciones y estados de hover que guían al usuario y dan sensación de calidad sin sobrecargar la interfaz.</p>
+                    <a href="#" class="read-more">Leer más <i class="bi bi-arrow-right"></i></a>
+                </article>
+
+                <article class="post-card reveal" data-category="multimedia">
+                    <span class="post-category"><i class="bi bi-camera-reels"></i> Multimedia</span>
+                    <h3>Cómo grabar un demo reel profesional</h3>
+                    <p class="post-meta">Publicado el 18 de abril de 2026</p>
+                    <p>Guion, iluminación y edición: la estructura que uso para mostrar mi trabajo audiovisual en menos de 90 segundos.</p>
+                    <a href="#" class="read-more">Leer más <i class="bi bi-arrow-right"></i></a>
+                </article>
+
+                <article class="post-card reveal" data-category="desarrollo" data-tags="css flexbox">
+                    <span class="post-category"><i class="bi bi-code-slash"></i> Desarrollo</span>
+                    <h3>CSS Grid y Flexbox: cuándo usar cada uno</h3>
+                    <p class="post-meta">Publicado el 2 de mayo de 2026</p>
+                    <p>Una guía práctica para decidir entre rejilla y caja flexible según el tipo de layout que estás construyendo.</p>
+                    <a href="#" class="read-more">Leer más <i class="bi bi-arrow-right"></i></a>
+                </article>
+
+            </section>
+
+            <p id="sin-resultados" class="is-hidden">No hay artículos en esta categoría todavía.</p>
+
+            <p class="back-to-top-wrap">
+                <a href="#" class="back-to-top" id="volver-arriba">Volver arriba <i class="bi bi-arrow-up"></i></a>
+            </p>
+        </main>
+
+    </div>
+
+    <!-- Pie de página -->
+    <footer class="footer-contact">
+        <div class="container footer-contact-grid">
+            <div class="footer-col">
+                <h3>Escríbeme</h3>
+                <div class="contact-links">
+                    <a href="mailto:tucorreo@email.com"><i class="bi bi-envelope"></i> tucorreo@email.com</a>
+                    <a href="tel:+570000000000"><i class="bi bi-phone"></i> Cel: +57 000 000 0000</a>
+                    <a href="tel:0000000"><i class="bi bi-telephone"></i> Tel Fijo: 000 0000</a>
+                </div>
+            </div>
+            <div class="footer-col">
+                <h3>Sígueme</h3>
+                <div class="social-media">
+                    <a href="#"><i class="bi bi-linkedin"></i> LinkedIn</a>
+                    <a href="#"><i class="bi bi-behance"></i> Behance</a>
+                    <a href="#"><i class="bi bi-github"></i> GitHub</a>
+                </div>
+            </div>
+            <div class="footer-col footer-cta">
+                <h3>¿Tienes un proyecto?</h3>
+                <a href="contacto.html" class="btn-hero">Completa el formulario</a>
+            </div>
+        </div>
+    </footer>
+
+    <button type="button" id="scroll-top" class="scroll-top-btn" aria-label="Volver arriba">
+        <i class="bi bi-arrow-up" aria-hidden="true"></i>
+    </button>
+
+    <script src="script.js"></script>
+    <script>
+        (() => {
+            'use strict';
+
+            const enlacesCategoria = document.querySelectorAll('#lista-categorias a');
+            const enlacesEtiqueta = document.querySelectorAll('#lista-etiquetas a');
+            const posts = document.querySelectorAll('.post-card');
+            const mensajeVacio = document.getElementById('sin-resultados');
+            const estado = document.getElementById('estado-filtro');
+
+            const limpiarActivos = () => {
+                enlacesCategoria.forEach((el) => el.classList.remove('active'));
+                enlacesEtiqueta.forEach((el) => el.classList.remove('active'));
+            };
+
+            const filtrarPorCategoria = (categoria) => posts.forEach((post) => {
+                const coincide = categoria === 'todas' || post.dataset.category === categoria;
+                post.classList.toggle('is-hidden', !coincide);
+            });
+
+            const filtrarPorEtiqueta = (etiqueta) => posts.forEach((post) => {
+                const etiquetas = (post.dataset.tags || '').split(' ');
+                post.classList.toggle('is-hidden', !etiquetas.includes(etiqueta));
+            });
+
+            const actualizarEstado = (descripcion) => {
+                const visibles = document.querySelectorAll('.post-card:not(.is-hidden)').length;
+                mensajeVacio.classList.toggle('is-hidden', visibles !== 0);
+                estado.textContent = `Mostrando ${visibles} artículo(s) — ${descripcion}.`;
+            };
+
+            enlacesCategoria.forEach((enlace) => {
+                enlace.addEventListener('click', (evento) => {
+                    evento.preventDefault();
+                    limpiarActivos();
+                    enlace.classList.add('active');
+                    filtrarPorCategoria(enlace.dataset.filter);
+                    actualizarEstado(`categoría ${enlace.textContent.trim()}`);
+                });
+            });
+
+            enlacesEtiqueta.forEach((enlace) => {
+                enlace.addEventListener('click', (evento) => {
+                    evento.preventDefault();
+                    limpiarActivos();
+                    enlace.classList.add('active');
+                    filtrarPorEtiqueta(enlace.dataset.tag);
+                    actualizarEstado(`etiqueta ${enlace.textContent.trim()}`);
+                });
+            });
+
+            document.getElementById('volver-arriba').addEventListener('click', (evento) => {
+                evento.preventDefault();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        })();
+    </script>
+
+</body>
+</html>

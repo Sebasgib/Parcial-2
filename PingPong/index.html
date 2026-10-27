@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Juego básico de Pong en HTML</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="menu" class="menu">
+  <h1>PONG</h1>
+
+  <div class="menu-section">
+    <h2>Modo de juego</h2>
+    <div class="options-row">
+      <button class="option selected" data-mode="pvp">2 Jugadores</button>
+      <button class="option" data-mode="cpu">1 Jugador vs CPU</button>
+    </div>
+  </div>
+
+  <div class="menu-section disabled" id="difficulty-section">
+    <h2>Dificultad (CPU)</h2>
+    <div class="options-row">
+      <button class="option" data-difficulty="facil">Fácil</button>
+      <button class="option selected" data-difficulty="normal">Normal</button>
+      <button class="option" data-difficulty="dificil">Difícil</button>
+      <button class="option" data-difficulty="imposible">Imposible</button>
+    </div>
+  </div>
+
+  <div class="menu-section">
+    <h2>Escenario</h2>
+    <div class="options-row">
+      <button class="option selected" data-scenario="clasico">Clásico</button>
+      <button class="option" data-scenario="neon">Neón</button>
+      <button class="option" data-scenario="espacial">Espacial</button>
+      <button class="option" data-scenario="retro">Retro</button>
+    </div>
+  </div>
+
+  <button id="start-btn" class="start-btn">Jugar</button>
+</div>
+
+<div id="game-container" class="game-container">
+  <canvas width="1000" height="650" id="game"></canvas>
+</div>
+
+<script src="js/script.js"></script>
+</body>
+</html>

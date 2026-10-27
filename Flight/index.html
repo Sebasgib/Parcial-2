@@ -1,0 +1,616 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#152628">
+  <title>Cielo en disputa</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f3e9d4;
+      --muted: #bac5b7;
+      --signal: #ef7652;
+      --line: rgba(243, 233, 212, .34);
+      --panel: rgba(15, 31, 32, .88);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+
+    body {
+      background: #152628;
+      color: var(--ink);
+      font-family: Georgia, "Times New Roman", serif;
+    }
+
+    button { font: inherit; }
+
+    .stage {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 420px;
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+
+    .topbar {
+      position: absolute;
+      inset: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 22px 34px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(13, 27, 29, .82), rgba(13, 27, 29, .14));
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; }
+
+    .roundel {
+      display: grid;
+      width: 34px;
+      aspect-ratio: 1;
+      place-items: center;
+      border: 1px solid rgba(239, 118, 82, .8);
+      border-radius: 50%;
+      color: #f38b68;
+      font-size: 17px;
+    }
+
+    .brand-name { font-size: 14px; letter-spacing: .12em; text-transform: uppercase; }
+    .brand-date { margin-top: 3px; color: var(--muted); font: 10px/1.2 monospace; letter-spacing: .08em; }
+
+    .mission-tag {
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font: 10px/1 monospace;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .hud {
+      position: absolute;
+      top: 106px;
+      left: 34px;
+      display: flex;
+      gap: 27px;
+      align-items: flex-start;
+    }
+
+    .readout { min-width: 66px; }
+    .readout-label { color: var(--muted); font: 10px/1.3 monospace; letter-spacing: .12em; text-transform: uppercase; }
+    .readout-value { margin-top: 5px; font-size: 20px; }
+    .health-dots { display: flex; gap: 5px; margin-top: 9px; }
+    .health-dots i { display: block; width: 19px; height: 4px; background: var(--signal); }
+    .health-dots i.off { background: rgba(243, 233, 212, .2); }
+
+    .bottom-bar {
+      position: absolute;
+      inset: auto 0 0;
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      padding: 20px 34px 24px;
+      border-top: 1px solid var(--line);
+      background: linear-gradient(0deg, rgba(13, 27, 29, .9), rgba(13, 27, 29, 0));
+    }
+
+    .objective { max-width: 430px; }
+    .objective-label { color: #f38b68; font: 10px/1.4 monospace; letter-spacing: .15em; text-transform: uppercase; }
+    .objective-text { margin-top: 5px; font-size: 15px; }
+
+    .key-hints { display: flex; gap: 18px; color: var(--muted); font: 10px/1 monospace; letter-spacing: .04em; }
+    .key-hints span { white-space: nowrap; }
+    kbd { padding: 4px 6px; border: 1px solid var(--line); color: var(--ink); font: inherit; }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(9, 21, 22, .46);
+      backdrop-filter: blur(3px);
+    }
+
+    .overlay[hidden] { display: none; }
+
+    .dialog {
+      width: min(500px, 100%);
+      padding: 36px 40px 34px;
+      border: 1px solid rgba(243, 233, 212, .55);
+      background: var(--panel);
+      box-shadow: 0 20px 90px rgba(0, 0, 0, .26);
+      animation: arrive .45s ease-out both;
+    }
+
+    @keyframes arrive {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .eyebrow { color: #f38b68; font: 10px/1.5 monospace; letter-spacing: .17em; text-transform: uppercase; }
+    h1 { margin: 13px 0 12px; font-size: clamp(34px, 8vw, 54px); font-weight: 400; line-height: .98; }
+    .dialog-copy { max-width: 390px; color: #d2d4c7; font-size: 15px; line-height: 1.6; }
+    .dialog-rule { height: 1px; margin: 23px 0; background: var(--line); }
+
+    .launch {
+      display: inline-flex;
+      min-height: 46px;
+      align-items: center;
+      justify-content: center;
+      padding: 0 18px;
+      border: 0;
+      background: var(--signal);
+      color: #172526;
+      cursor: pointer;
+      font: 12px/1 monospace;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      transition: background .18s ease, transform .18s ease;
+    }
+
+    .launch:hover { transform: translateY(-2px); background: #ff9870; }
+    .launch:focus-visible, .fire:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
+    .fine-print { margin: 17px 0 0; color: #aab5a9; font: 10px/1.5 monospace; }
+
+    .touch-controls { display: none; }
+
+    @media (max-width: 640px) {
+      .topbar { padding: 15px 17px; }
+      .brand { gap: 9px; }
+      .roundel { width: 30px; font-size: 14px; }
+      .brand-name { font-size: 11px; }
+      .brand-date { font-size: 9px; }
+      .mission-tag { padding: 7px 8px; font-size: 8px; }
+      .hud { top: 78px; left: 18px; gap: 17px; }
+      .readout-label { font-size: 9px; }
+      .readout-value { font-size: 17px; }
+      .bottom-bar { padding: 14px 18px calc(16px + env(safe-area-inset-bottom)); }
+      .objective-text { max-width: 245px; font-size: 13px; }
+      .key-hints { display: none; }
+      .touch-controls { position: absolute; right: 18px; bottom: 83px; display: block; }
+      .fire {
+        width: 68px;
+        height: 68px;
+        border: 1px solid rgba(243, 233, 212, .75);
+        border-radius: 50%;
+        background: rgba(239, 118, 82, .8);
+        color: #172526;
+        cursor: pointer;
+        font: 10px/1 monospace;
+        letter-spacing: .08em;
+      }
+      .dialog { padding: 29px 25px 27px; }
+      .dialog-copy { font-size: 14px; }
+    }
+
+    @media (max-height: 500px) and (min-width: 641px) {
+      .topbar { padding-top: 12px; padding-bottom: 12px; }
+      .hud { top: 75px; }
+      .bottom-bar { padding-top: 12px; padding-bottom: 14px; }
+      .dialog { padding-top: 24px; padding-bottom: 22px; }
+      .dialog-rule { margin: 15px 0; }
+    }
+  </style>
+</head>
+<body>
+  <main class="stage" aria-label="Juego de combate aéreo de historia alternativa">
+    <canvas id="sky" aria-label="Cielo sobre el océano durante una misión aérea"></canvas>
+
+    <header class="topbar">
+      <div class="brand">
+        <span class="roundel" aria-hidden="true">日</span>
+        <div><div class="brand-name">Cielo en disputa</div><div class="brand-date">AGOSTO DE 1945 · FICCIÓN ALTERNATIVA</div></div>
+      </div>
+      <div class="mission-tag">SECTOR 07 / PACÍFICO</div>
+    </header>
+
+    <section class="hud" aria-label="Estado de la misión">
+      <div class="readout"><div class="readout-label">Blindaje</div><div class="health-dots" id="health" aria-label="4 de 4 puntos de blindaje"></div></div>
+      <div class="readout"><div class="readout-label">Interceptados</div><div class="readout-value" id="score">00 / 06</div></div>
+      <div class="readout"><div class="readout-label">Tiempo</div><div class="readout-value" id="timer">01:10</div></div>
+    </section>
+
+    <div class="touch-controls"><button class="fire" id="fire" aria-label="Mantén para disparar">FUEGO</button></div>
+
+    <footer class="bottom-bar">
+      <div class="objective"><div class="objective-label">Objetivo de misión</div><div class="objective-text" id="objective">Intercepta seis bombarderos antes de que alcancen su objetivo.</div></div>
+      <div class="key-hints"><span><kbd>WASD</kbd> / <kbd>↑↓←→</kbd> volar</span><span><kbd>ESPACIO</kbd> disparar</span></div>
+    </footer>
+
+    <section class="overlay" id="overlay" aria-live="polite">
+      <div class="dialog">
+        <div class="eyebrow" id="eyebrow">Una misión de historia alternativa</div>
+        <h1 id="title">Cielo<br>en disputa</h1>
+        <p class="dialog-copy" id="copy">Agosto de 1945. Pilotas un caza japonés en una última misión de defensa. Intercepta la formación estadounidense antes de que llegue a las islas.</p>
+        <div class="dialog-rule"></div>
+        <button class="launch" id="start">Iniciar misión</button>
+        <p class="fine-print" id="fineprint">Ficción interactiva inspirada en la Segunda Guerra Mundial. Los desenlaces alternativos no representan hechos históricos.</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const canvas = document.querySelector('#sky');
+      const context = canvas.getContext('2d');
+      const overlay = document.querySelector('#overlay');
+      const startButton = document.querySelector('#start');
+      const healthElement = document.querySelector('#health');
+      const scoreElement = document.querySelector('#score');
+      const timerElement = document.querySelector('#timer');
+      const objectiveElement = document.querySelector('#objective');
+      const fireButton = document.querySelector('#fire');
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const keys = new Set();
+      const player = { x: 0.17, y: 0.52, health: 6, invulnerable: 0 };
+      const bullets = [];
+      const enemies = [];
+      const particles = [];
+      let width = 0;
+      let height = 0;
+      let pixelRatio = 1;
+      let mode = 'ready';
+      let score = 0;
+      let timeLeft = 70;
+      let lastFrame = 0;
+      let lastShot = 0;
+      let spawnClock = 0;
+      let backgroundOffset = 0;
+      let pointerActive = false;
+      let firing = false;
+
+      const setSize = () => {
+        const bounds = canvas.getBoundingClientRect();
+        width = bounds.width;
+        height = bounds.height;
+        pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.round(width * pixelRatio);
+        canvas.height = Math.round(height * pixelRatio);
+        context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+      };
+
+      const updateHud = () => {
+        healthElement.replaceChildren(...Array.from({ length: 6 }, (_, index) => {
+          const dot = document.createElement('i');
+          if (index >= player.health) dot.className = 'off';
+          return dot;
+        }));
+        healthElement.setAttribute('aria-label', `${player.health} de 6 puntos de blindaje`);
+        scoreElement.textContent = `${String(score).padStart(2, '0')} / 06`;
+        const seconds = Math.max(0, Math.ceil(timeLeft));
+        timerElement.textContent = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+      };
+
+      const resetGame = () => {
+        player.x = 0.17;
+        player.y = 0.52;
+        player.health = 6;
+        player.invulnerable = 0;
+        bullets.length = 0;
+        enemies.length = 0;
+        particles.length = 0;
+        score = 0;
+        timeLeft = 85;
+        spawnClock = 1.1;
+        lastShot = 0;
+        firing = false;
+        objectiveElement.textContent = 'Intercepta seis bombarderos antes de que alcancen su objetivo.';
+        updateHud();
+      };
+
+      const beginGame = () => {
+        resetGame();
+        mode = 'playing';
+        overlay.hidden = true;
+        lastFrame = performance.now();
+      };
+
+      const finishGame = victory => {
+        if (mode !== 'playing') return;
+        mode = victory ? 'won' : 'lost';
+        overlay.hidden = false;
+        document.querySelector('#eyebrow').textContent = victory ? 'Final alternativo · misión cumplida' : 'Final histórico · defensa superada';
+        document.querySelector('#title').innerHTML = victory ? 'La ruta<br>cambia' : 'Cielo<br>en llamas';
+        document.querySelector('#copy').textContent = victory
+          ? 'En esta línea temporal ficticia, Japón repele la incursión y después lanza bombardeos de represalia sobre objetivos militares en Estados Unidos. La guerra se prolonga; el desenlace también deja víctimas civiles.'
+          : 'La defensa cede. En la historia real, Estados Unidos lanzó bombas atómicas sobre Hiroshima el 6 de agosto y Nagasaki el 9 de agosto de 1945. Esta misión y su desenlace jugable son ficción.';
+        startButton.textContent = 'Volver a jugar';
+        document.querySelector('#fineprint').textContent = victory
+          ? 'La victoria es una historia alternativa, no una recreación de hechos reales.'
+          : 'Los bombardeos atómicos ocurrieron en la historia real; esta misión no.';
+        objectiveElement.textContent = victory ? 'Formación interceptada. La historia toma otro rumbo.' : 'La formación ha alcanzado las islas.';
+      };
+
+      const drawPlane = (x, y, scale, enemy = false) => {
+        context.save();
+        context.translate(x, y);
+        context.scale(scale, scale);
+        if (enemy) context.scale(-1, 1);
+        context.fillStyle = enemy ? '#d8d0bc' : '#34473b';
+        context.strokeStyle = enemy ? '#344147' : '#d4c5a4';
+        context.lineWidth = 1.5;
+        context.beginPath();
+        context.moveTo(30, 0);
+        context.lineTo(7, -5);
+        context.lineTo(-2, -22);
+        context.lineTo(-8, -22);
+        context.lineTo(-5, -6);
+        context.lineTo(-24, -7);
+        context.lineTo(-30, -14);
+        context.lineTo(-33, -14);
+        context.lineTo(-31, -3);
+        context.lineTo(-34, 0);
+        context.lineTo(-31, 3);
+        context.lineTo(-33, 14);
+        context.lineTo(-30, 14);
+        context.lineTo(-24, 7);
+        context.lineTo(-5, 6);
+        context.lineTo(-8, 22);
+        context.lineTo(-2, 22);
+        context.lineTo(7, 5);
+        context.closePath();
+        context.fill();
+        context.stroke();
+        context.fillStyle = enemy ? '#b96e52' : '#d4c5a4';
+        context.beginPath();
+        context.ellipse(0, 0, 5, 2.5, 0, 0, Math.PI * 2);
+        context.fill();
+        if (!enemy) {
+          context.fillStyle = '#e77a55';
+          context.beginPath();
+          context.arc(-14, 0, 3, 0, Math.PI * 2);
+          context.fill();
+        }
+        context.restore();
+      };
+
+      const drawCloud = (x, y, scale, alpha) => {
+        context.save();
+        context.translate(x, y);
+        context.scale(scale, scale);
+        context.globalAlpha = alpha;
+        context.fillStyle = '#d4d7c7';
+        context.beginPath();
+        context.ellipse(0, 0, 54, 9, 0, 0, Math.PI * 2);
+        context.ellipse(-17, -4, 24, 10, 0, 0, Math.PI * 2);
+        context.ellipse(15, -5, 30, 12, 0, 0, Math.PI * 2);
+        context.fill();
+        context.restore();
+      };
+
+      const drawBackground = delta => {
+        const sky = context.createLinearGradient(0, 0, 0, height);
+        sky.addColorStop(0, '#54716d');
+        sky.addColorStop(.48, '#a8a890');
+        sky.addColorStop(1, '#d18e68');
+        context.fillStyle = sky;
+        context.fillRect(0, 0, width, height);
+
+        context.fillStyle = 'rgba(242, 196, 139, .56)';
+        context.beginPath();
+        context.arc(width * .77, height * .31, Math.min(width, height) * .075, 0, Math.PI * 2);
+        context.fill();
+
+        backgroundOffset = (backgroundOffset + delta * 13) % (width + 180);
+        for (let index = 0; index < 5; index++) {
+          const x = ((index * width * .31 - backgroundOffset * (.25 + index * .07)) % (width + 140) + width + 140) % (width + 140) - 60;
+          drawCloud(x, height * (.19 + (index % 3) * .12), .7 + (index % 2) * .45, .17 + (index % 3) * .04);
+        }
+
+        const horizon = height * .69;
+        context.fillStyle = '#596d60';
+        context.beginPath();
+        context.moveTo(0, horizon + 22);
+        context.lineTo(width * .16, horizon - 3);
+        context.lineTo(width * .28, horizon + 14);
+        context.lineTo(width * .45, horizon - 10);
+        context.lineTo(width * .56, horizon + 16);
+        context.lineTo(width * .71, horizon - 6);
+        context.lineTo(width * .83, horizon + 15);
+        context.lineTo(width, horizon - 1);
+        context.lineTo(width, height);
+        context.lineTo(0, height);
+        context.closePath();
+        context.fill();
+
+        context.fillStyle = '#294d4b';
+        context.fillRect(0, horizon + 20, width, height - horizon - 20);
+        context.strokeStyle = 'rgba(211, 211, 180, .24)';
+        context.lineWidth = 1;
+        for (let row = 0; row < 7; row++) {
+          const y = horizon + 30 + row * ((height - horizon - 30) / 7);
+          context.beginPath();
+          context.moveTo(0, y);
+          context.lineTo(width, y);
+          context.stroke();
+        }
+        context.strokeStyle = 'rgba(211, 211, 180, .16)';
+        for (let line = 0; line < 13; line++) {
+          const x = ((line * 117 - backgroundOffset * (1.5 + line * .015)) % (width + 100) + width + 100) % (width + 100) - 40;
+          context.beginPath();
+          context.moveTo(x, horizon + 27);
+          context.lineTo(x - 16, height);
+          context.stroke();
+        }
+
+        context.fillStyle = 'rgba(20, 35, 33, .14)';
+        context.fillRect(0, 0, width, height);
+      };
+
+      const burst = (x, y, color = '#ef9b68') => {
+        for (let index = 0; index < 11; index++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 20 + Math.random() * 95;
+          particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: .35 + Math.random() * .45, color });
+        }
+      };
+
+      const spawnEnemy = () => {
+        enemies.push({ x: width + 48, y: height * (.24 + Math.random() * .48), health: 2, speed: 68 + Math.random() * 20, shoot: 2 + Math.random() * 1.4, phase: Math.random() * 6 });
+      };
+
+      const updateGame = delta => {
+        if (mode !== 'playing') return;
+        timeLeft -= delta;
+        spawnClock -= delta;
+        if (spawnClock <= 0 && enemies.length < 4) {
+          spawnEnemy();
+          spawnClock = 2.8 + Math.random() * 1.2;
+        }
+
+        const speed = 260 * delta;
+        if (keys.has('arrowup') || keys.has('w')) player.y -= speed / height;
+        if (keys.has('arrowdown') || keys.has('s')) player.y += speed / height;
+        if (keys.has('arrowleft') || keys.has('a')) player.x -= speed / width;
+        if (keys.has('arrowright') || keys.has('d')) player.x += speed / width;
+        player.x = Math.max(.055, Math.min(.66, player.x));
+        player.y = Math.max(.13, Math.min(.83, player.y));
+        player.invulnerable = Math.max(0, player.invulnerable - delta);
+
+        if ((keys.has(' ') || firing) && performance.now() - lastShot > 220) {
+          bullets.push({ x: player.x * width + 23, y: player.y * height, vx: 540, vy: 0, friendly: true });
+          lastShot = performance.now();
+        }
+
+        for (let index = bullets.length - 1; index >= 0; index--) {
+          const bullet = bullets[index];
+          bullet.x += bullet.vx * delta;
+          bullet.y += bullet.vy * delta;
+          if (bullet.x < -12 || bullet.x > width + 12 || bullet.y < -12 || bullet.y > height + 12) bullets.splice(index, 1);
+        }
+
+        for (let enemyIndex = enemies.length - 1; enemyIndex >= 0; enemyIndex--) {
+          const enemy = enemies[enemyIndex];
+          enemy.x -= enemy.speed * delta;
+          enemy.phase += delta;
+          enemy.y += Math.sin(enemy.phase * 2) * 10 * delta;
+          enemy.shoot -= delta;
+          if (enemy.shoot <= 0) {
+            bullets.push({ x: enemy.x - 24, y: enemy.y, vx: -220, vy: (player.y * height - enemy.y) * .14, friendly: false });
+            enemy.shoot = 2 + Math.random() * 1.4;
+          }
+          if (enemy.x < -45) {
+            enemies.splice(enemyIndex, 1);
+            player.health -= 1;
+            burst(width * .08, enemy.y, '#d4775d');
+            updateHud();
+            continue;
+          }
+          for (let bulletIndex = bullets.length - 1; bulletIndex >= 0; bulletIndex--) {
+            const bullet = bullets[bulletIndex];
+            if (bullet.friendly && Math.abs(bullet.x - enemy.x) < 28 && Math.abs(bullet.y - enemy.y) < 19) {
+              bullets.splice(bulletIndex, 1);
+              enemy.health -= 1;
+              if (enemy.health <= 0) {
+                burst(enemy.x, enemy.y);
+                enemies.splice(enemyIndex, 1);
+                score += 1;
+                updateHud();
+                if (score >= 6) finishGame(true);
+              }
+              break;
+            }
+          }
+        }
+
+        for (let index = bullets.length - 1; index >= 0; index--) {
+          const bullet = bullets[index];
+          if (!bullet.friendly && Math.hypot(bullet.x - player.x * width, bullet.y - player.y * height) < 21) {
+            bullets.splice(index, 1);
+            if (player.invulnerable === 0) {
+              player.health -= 1;
+              player.invulnerable = 1.05;
+              burst(player.x * width, player.y * height, '#f2d59a');
+              updateHud();
+            }
+          }
+        }
+
+        for (let index = particles.length - 1; index >= 0; index--) {
+          const particle = particles[index];
+          particle.x += particle.vx * delta;
+          particle.y += particle.vy * delta;
+          particle.life -= delta;
+          if (particle.life <= 0) particles.splice(index, 1);
+        }
+
+        if (player.health <= 0 || timeLeft <= 0) finishGame(false);
+        updateHud();
+      };
+
+      const render = delta => {
+        context.clearRect(0, 0, width, height);
+        drawBackground(delta);
+        for (const enemy of enemies) drawPlane(enemy.x, enemy.y, .92, true);
+        for (const bullet of bullets) {
+          context.fillStyle = bullet.friendly ? '#f4d69a' : '#ef7652';
+          context.fillRect(bullet.x - 5, bullet.y - 1.5, 10, 3);
+        }
+        for (const particle of particles) {
+          context.globalAlpha = Math.max(0, particle.life * 1.8);
+          context.fillStyle = particle.color;
+          context.fillRect(particle.x, particle.y, 3, 3);
+        }
+        context.globalAlpha = 1;
+        if (player.invulnerable === 0 || Math.floor(performance.now() / 100) % 2 === 0) {
+          drawPlane(player.x * width, player.y * height, 1.15);
+        }
+      };
+
+      const frame = now => {
+        const delta = Math.min((now - lastFrame) / 1000 || 0, .04);
+        lastFrame = now;
+        updateGame(delta);
+        render(reducedMotion ? 0 : delta);
+        requestAnimationFrame(frame);
+      };
+
+      const moveWithPointer = event => {
+        if (!pointerActive || mode !== 'playing') return;
+        const bounds = canvas.getBoundingClientRect();
+        player.x = Math.max(.055, Math.min(.66, (event.clientX - bounds.left) / bounds.width));
+        player.y = Math.max(.13, Math.min(.83, (event.clientY - bounds.top) / bounds.height));
+      };
+
+      startButton.addEventListener('click', beginGame);
+      window.addEventListener('resize', setSize);
+      window.addEventListener('keydown', event => {
+        const key = event.key.toLowerCase();
+        if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) event.preventDefault();
+        keys.add(key);
+      });
+      window.addEventListener('keyup', event => keys.delete(event.key.toLowerCase()));
+      window.addEventListener('blur', () => { keys.clear(); firing = false; pointerActive = false; });
+      canvas.addEventListener('pointerdown', event => { pointerActive = true; canvas.setPointerCapture(event.pointerId); moveWithPointer(event); });
+      canvas.addEventListener('pointermove', moveWithPointer);
+      canvas.addEventListener('pointerup', () => { pointerActive = false; });
+      fireButton.addEventListener('pointerdown', event => { event.preventDefault(); firing = true; });
+      fireButton.addEventListener('pointerup', () => { firing = false; });
+      fireButton.addEventListener('pointerleave', () => { firing = false; });
+      fireButton.addEventListener('pointercancel', () => { firing = false; });
+
+      setSize();
+      updateHud();
+      if (!reducedMotion) {
+        const dialog = document.querySelector('.dialog');
+        dialog.style.animationDuration = '.45s';
+      }
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>

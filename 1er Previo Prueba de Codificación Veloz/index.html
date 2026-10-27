@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portafolio - Estudiante de Ingeniería Multimedia</title>
+    <meta name="description" content="Portafolio de Juan Sebastian Torres Castellanos, estudiante de Ingeniería Multimedia: proyectos, habilidades y experiencia en diseño y desarrollo.">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <!-- Iconos multimedia (Bootstrap Icons, solo CSS/fuente) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Vinculación de la hoja de estilo externa -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="scroll-progress" id="scroll-progress" aria-hidden="true"></div>
+
+    <!-- Cabecera (misma estructura y tamaño en Inicio, Blog y Contacto) -->
+    <header class="header-blog">
+        <div class="container header-blog-container">
+            <div class="blog-brand">
+                <h1>Portafolio Multimedia</h1>
+                <p>Diseño y desarrollo multimedia</p>
+            </div>
+            <nav class="site-nav" aria-label="Navegación principal">
+                <a href="index.html" class="active" aria-current="page">Inicio</a>
+                <a href="blog.html">Blog</a>
+                <a href="contacto.html">Contacto</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+
+    <!-- Sección: Presentación (Hero) -->
+    <section id="perfil" class="container hero-intro reveal">
+        <p class="hero-eyebrow">Ingeniería Multimedia</p>
+        <h2>Juan Sebastian Torres Castellanos</h2>
+        <p class="hero-role">Estudiante enfocado en diseño, desarrollo y producción audiovisual, integrando tecnología y creatividad en cada proyecto.</p>
+        <div class="equalizer" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="hero-icons" aria-hidden="true">
+            <i class="bi bi-camera-reels" title="Video"></i>
+            <i class="bi bi-palette2" title="Diseño"></i>
+            <i class="bi bi-code-slash" title="Desarrollo"></i>
+            <i class="bi bi-mic" title="Audio"></i>
+            <i class="bi bi-image" title="Fotografía"></i>
+        </div>
+        <a href="contacto.html" class="btn-hero">Hablemos de tu proyecto</a>
+    </section>
+
+    <!-- Sección: Video -->
+    <section id="video-presentacion" class="container section-box reveal">
+        <h3 class="section-title"><i class="bi bi-camera-reels" aria-hidden="true"></i> Video</h3>
+        <p class="video-meta">Duración: 47 min</p>
+        <video class="project-video" controls preload="metadata">
+            <source src="Video/0918.mp4" type="video/mp4">
+            Tu navegador no admite la reproducción de video. <a href="Video/0918.mp4">Descarga el video aquí</a>.
+        </video>
+    </section>
+
+    <!-- Sección: Sobre Mí -->
+    <section id="sobre-mi" class="container section-box reveal">
+        <h3 class="section-title">Sobre Mí</h3>
+        <p>Soy un estudiante apasionado por la tecnología y el diseño. Me especializo en integrar el desarrollo de software con la creatividad visual. Mi objetivo profesional es diseñar soluciones digitales accesibles e interactivas que mejoren la experiencia del usuario, aprovechando mis conocimientos en Ingeniería Multimedia.</p>
+    </section>
+
+    <!-- Sección: Experiencia -->
+    <section id="experiencia" class="container section-box bg-light reveal">
+        <h3 class="section-title">Experiencia y Educación</h3>
+        <ul class="timeline">
+            <li>
+                <strong>Título Bachiller Académico</strong>
+                <span class="timeline-meta">Colegio Madre Carmen &middot; Año 2023</span>
+            </li>
+            <li>
+                <strong>Certificado en Desarrollo Web / Diseño UX</strong>
+                <span class="timeline-meta">SENA &middot; Año 2024</span>
+            </li>
+            <li>
+                <strong>Tecnico en sistemas</strong>
+                <span class="timeline-meta">SENA &middot; Año 2023</span>
+            </li>
+        </ul>
+    </section>
+
+    <!-- Sección: Proyectos -->
+    <section id="proyectos" class="container section-box reveal">
+        <h3 class="section-title">Proyectos Destacados</h3>
+        <div class="grid-projects">
+            <article class="project-card">
+                <img src="Pixelart/rain-desk-web.jpg" width="900" height="506" loading="lazy" decoding="async" alt="Ilustración vectorial de un Toyota concept todoterreno con un kayak en el techo, sobre fondo degradado azul y magenta, para la pieza 'Rain Desk'" class="project-img">
+                <h4><i class="bi bi-palette2" aria-hidden="true"></i> Rain Desk &mdash; Ilustración Vectorial</h4>
+                <p><strong>Función:</strong> Ilustrador digital / Diseñador gráfico</p>
+                <p><strong>Objetivos y Resultados:</strong> Pieza de arte vectorial que reinterpreta un concept car todoterreno de Toyota con una paleta de degradados azul y magenta, explorando composición, luz y tipografía como parte del diseño.</p>
+            </article>
+            <article class="project-card">
+                <img src="Pixelart/master-chief-web.jpg" width="900" height="640" loading="lazy" decoding="async" alt="Retrato en pixel art del personaje Master Chief de la saga Halo, sosteniendo un rifle, sobre fondo azul" class="project-img">
+                <h4><i class="bi bi-controller" aria-hidden="true"></i> Master Chief &mdash; Pixel Art</h4>
+                <p><strong>Función:</strong> Ilustrador de arte pixel</p>
+                <p><strong>Objetivos y Resultados:</strong> Retrato del personaje Master Chief (Halo) trabajado completamente en píxeles, cuidando el sombreado, el contraste de color y el detalle del casco y el armamento.</p>
+            </article>
+        </div>
+    </section>
+
+    <!-- Sección: Habilidades -->
+    <section id="habilidades" class="container section-box bg-light reveal">
+        <h3 class="section-title">Habilidades Técnicas y Blandas</h3>
+        <div class="skills-container">
+            <span class="skill-badge"><i class="bi bi-code-slash" aria-hidden="true"></i> Desarrollo Web (HTML/CSS)</span>
+            <span class="skill-badge"><i class="bi bi-palette2" aria-hidden="true"></i> Diseño de Interfaces (UI/UX)</span>
+            <span class="skill-badge"><i class="bi bi-camera-reels" aria-hidden="true"></i> Edición Multimedia</span>
+            <span class="skill-badge"><i class="bi bi-people" aria-hidden="true"></i> Trabajo en equipo</span>
+        </div>
+    </section>
+
+    </main>
+
+    <!-- Pie de página: Contacto -->
+    <footer id="contacto" class="footer-contact">
+        <div class="container footer-contact-grid">
+            <div class="footer-col">
+                <h3>Escríbeme</h3>
+                <div class="contact-links">
+                    <a href="mailto:tucorreo@email.com"><i class="bi bi-envelope" aria-hidden="true"></i> tucorreo@email.com</a>
+                    <a href="tel:+570000000000"><i class="bi bi-phone" aria-hidden="true"></i> Cel: +57 000 000 0000</a>
+                    <a href="tel:0000000"><i class="bi bi-telephone" aria-hidden="true"></i> Tel Fijo: 000 0000</a>
+                </div>
+            </div>
+            <div class="footer-col">
+                <h3>Sígueme</h3>
+                <div class="social-media">
+                    <a href="#"><i class="bi bi-linkedin" aria-hidden="true"></i> LinkedIn</a>
+                    <a href="#"><i class="bi bi-behance" aria-hidden="true"></i> Behance</a>
+                    <a href="#"><i class="bi bi-github" aria-hidden="true"></i> GitHub</a>
+                </div>
+            </div>
+            <div class="footer-col footer-cta">
+                <h3>¿Tienes un proyecto?</h3>
+                <a href="contacto.html" class="btn-hero">Completa el formulario</a>
+            </div>
+        </div>
+    </footer>
+
+    <button type="button" id="scroll-top" class="scroll-top-btn" aria-label="Volver arriba">
+        <i class="bi bi-arrow-up" aria-hidden="true"></i>
+    </button>
+
+    <script src="script.js"></script>
+
+</body>
+</html>
