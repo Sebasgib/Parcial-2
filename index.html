@@ -2,7 +2,17 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Aplica el tema guardado (o el del sistema) antes de pintar, para evitar el parpadeo -->
+    <script>
+        (function () {
+            try {
+                var t = localStorage.getItem('tema');
+                if (t !== 'light' && t !== 'dark') t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', t);
+                document.documentElement.setAttribute('data-bs-theme', t);
+            } catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
+        })();
+    </script>    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portafolio - Estudiante de Ingeniería Multimedia</title>
     <meta name="description" content="Portafolio de Juan Sebastian Torres Castellanos, estudiante de Ingeniería Multimedia: proyectos, habilidades y experiencia en diseño y desarrollo.">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -27,6 +37,10 @@
                 <a href="index.html#videojuegos">Videojuegos</a>
                 <a href="blog.html">Blog</a>
                 <a href="contacto.html">Contacto</a>
+                <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Cambiar a modo claro" title="Cambiar entre modo oscuro y claro">
+                    <i class="bi bi-sun-fill icon-sun" aria-hidden="true"></i>
+                    <i class="bi bi-moon-stars-fill icon-moon" aria-hidden="true"></i>
+                </button>
             </nav>
         </div>
     </header>

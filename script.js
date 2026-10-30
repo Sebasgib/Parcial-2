@@ -4,6 +4,41 @@
 (() => {
     'use strict';
 
+    // Alternador de modo oscuro / claro. El tema inicial lo fija un script en el <head>;
+    // aquí se gestiona el botón, se guarda la elección y se sincroniza con Bootstrap.
+    const raiz = document.documentElement;
+    const botonTema = document.getElementById('theme-toggle');
+    const reducirMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const aplicarTema = (tema) => {
+        raiz.setAttribute('data-theme', tema);
+        raiz.setAttribute('data-bs-theme', tema);
+        if (botonTema) {
+            botonTema.setAttribute('aria-label', tema === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
+        }
+    };
+
+    if (botonTema) {
+        aplicarTema(raiz.getAttribute('data-theme') === 'light' ? 'light' : 'dark');
+        botonTema.addEventListener('click', () => {
+            const nuevo = raiz.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            if (!reducirMovimiento) {
+                raiz.classList.add('theme-anim');
+                setTimeout(() => raiz.classList.remove('theme-anim'), 450);
+            }
+            aplicarTema(nuevo);
+            try { localStorage.setItem('tema', nuevo); } catch (e) { /* almacenamiento no disponible */ }
+        });
+    }
+
+    // Si el usuario nunca eligió, sigue los cambios del sistema operativo
+    const preferenciaSistema = window.matchMedia('(prefers-color-scheme: light)');
+    preferenciaSistema.addEventListener('change', (e) => {
+        let guardado = null;
+        try { guardado = localStorage.getItem('tema'); } catch (err) { /* ignorar */ }
+        if (guardado !== 'light' && guardado !== 'dark') aplicarTema(e.matches ? 'light' : 'dark');
+    });
+
     const progressBar = document.getElementById('scroll-progress');
     if (progressBar) {
         const actualizarProgreso = () => {

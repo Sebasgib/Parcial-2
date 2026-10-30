@@ -41,6 +41,82 @@
     --bs-link-hover-color: var(--accent-glow);
 }
 
+:root { color-scheme: dark; }
+
+/* =========================================
+   Modo claro: solo redefine la paleta; el resto del CSS usa las mismas variables
+========================================= */
+:root[data-theme="light"] {
+    color-scheme: light;
+    --bg-main: #EEF3FF;        /* Fondo general: azul hielo */
+    --bg-secondary: #FFFFFF;   /* Tarjetas y cajas */
+    --bg-elevated: #E4ECFF;    /* Superficies elevadas */
+    --bg-deep: #DCE6FA;        /* Encabezado y pie de página */
+    --text-primary: #0E1A3D;
+    --text-secondary: #46537C;
+    --accent-color: #1F6FEB;   /* Azul más oscuro para mantener el contraste sobre fondos claros */
+    --accent-hover: #1456BD;
+    --accent-glow: #007CA8;
+    --border-subtle: #C3D0F0;
+    --danger-color: #D6334D;
+    --success-color: #16803C;
+    --shadow-sm: 0 4px 10px rgba(30, 55, 120, 0.10);
+    --shadow-md: 0 6px 18px rgba(30, 55, 120, 0.14);
+    --shadow-lg: 0 16px 34px rgba(30, 55, 120, 0.20);
+    --bs-primary-rgb: 31, 111, 235;
+}
+
+/* El degradado de la cabecera de Contacto necesita texto claro también en modo claro */
+:root[data-theme="light"] .contact-hero {
+    background: linear-gradient(135deg, #1F6FEB, #0B3FA8);
+}
+:root[data-theme="light"] .contact-hero .section-title,
+:root[data-theme="light"] .contact-hero p {
+    color: #FFFFFF;
+}
+
+/* Transición suave de colores solo mientras se alterna el tema (la añade script.js un instante) */
+html.theme-anim,
+html.theme-anim *,
+html.theme-anim *::before,
+html.theme-anim *::after {
+    transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease !important;
+}
+
+/* --- Botón alternador de tema (en la navegación) --- */
+.theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border: 1px solid var(--border-subtle);
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    color: var(--accent-glow);
+    font-size: 1.05rem;
+    cursor: pointer;
+    transition: transform 0.25s ease, background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
+
+.theme-toggle:hover {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: var(--bg-main);
+    transform: rotate(18deg);
+}
+
+.theme-toggle:focus-visible {
+    outline: 2px solid var(--accent-glow);
+    outline-offset: 3px;
+}
+
+/* En modo oscuro se muestra el sol (pasar a claro); en modo claro, la luna (pasar a oscuro) */
+.theme-toggle .icon-moon { display: none; }
+:root[data-theme="light"] .theme-toggle .icon-sun { display: none; }
+:root[data-theme="light"] .theme-toggle .icon-moon { display: inline; }
+
 body {
     font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     background-color: var(--bg-main);
@@ -581,6 +657,13 @@ a.skill-badge.active {
 .footer-contact a:hover {
     text-decoration: underline;
     color: var(--accent-glow);
+}
+
+/* El botón del pie conserva su propio color de texto (el estilo de enlaces del pie lo dejaba azul sobre azul) */
+.footer-contact a.btn-hero,
+.footer-contact a.btn-hero:hover {
+    color: var(--bg-main);
+    text-decoration: none;
 }
 
 .contact-links, .social-media {
