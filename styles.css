@@ -462,6 +462,66 @@ body {
 }
 
 /* =========================================
+   Videojuegos (tarjetas que enlazan a Juegos/)
+========================================= */
+#videojuegos { scroll-margin-top: 20px; }
+
+.section-intro {
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+}
+
+.game-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.game-card p { margin-bottom: 8px; }
+
+.game-thumb {
+    display: block;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    margin-bottom: 14px;
+}
+
+/* Cuatro juegos: rejilla de 2 columnas en escritorio (1 en móvil) para que ninguna tarjeta quede sola */
+#videojuegos .grid-projects {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+}
+
+.game-card .project-img {
+    height: auto; /* el atributo height del HTML no debe deformar la portada */
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    margin-bottom: 0;
+    transition: transform 0.35s ease;
+}
+
+.game-card:hover .project-img { transform: scale(1.04); }
+
+.game-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 6px 0 16px;
+}
+
+.game-tags span {
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+    padding: 3px 10px;
+    font-size: 0.78rem;
+    color: var(--accent-glow);
+}
+
+/* El botón queda siempre al fondo de la tarjeta, aunque los textos tengan distinto largo */
+.game-play {
+    align-self: flex-start;
+    margin-top: auto;
+}
+
+/* =========================================
    Habilidades
 ========================================= */
 .skills-container {

@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Fútbol 2D estilo Atari: 1 jugador contra la IA o 2 jugadores en el mismo teclado.">
+<title>Fútbol Atari 2D</title>
+<link rel="stylesheet" href="../salir.css">
+<style>
+  html, body { height: 100%; margin: 0; background: #000; overflow: hidden; }
+  body { display: flex; align-items: center; justify-content: center; }
+
+  /* "Televisor": el canvas es de 320x200 y se amplía con píxeles grandes y nítidos */
+  .tv { position: relative; line-height: 0; box-shadow: 0 0 0 6px #1a1a1a, 0 0 60px rgba(60, 200, 90, .18); border-radius: 6px; overflow: hidden; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; background: #000; display: block; }
+
+  /* Líneas de barrido tenues para el aire de CRT */
+  .tv::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .16) 0 1px, transparent 1px 3px);
+  }
+
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<a class="exit-btn" href="../../index.html#videojuegos" aria-label="Salir del juego y volver al portafolio" title="Volver al portafolio">&larr; Salir</a>
+
+<main class="tv">
+  <canvas id="screen" width="320" height="200" aria-label="Fútbol 2D estilo Atari: cancha, arcos, jugadores y arqueros"></canvas>
+</main>
+<p class="sr-only">Controles: jugador 1 con W, A, S y D y la barra espaciadora para patear. Jugador 2 con las flechas y Enter. P pausa, Escape vuelve al menú, M silencia el sonido.</p>
+<noscript>Este juego necesita JavaScript.</noscript>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ======================================================================
+     1. CONSTANTES: pantalla lógica de 320x200 px, cancha y reglas
+     ====================================================================== */
+  const W = 320, H = 200;
+  const FIELD = { l: 14, r: 306, t: 34, b: 190 };   // línea de gol izquierda/derecha y bandas
+  const CY = (FIELD.t + FIELD.b) / 2;               // eje horizontal de la cancha
+  const GOAL_HALF = 24;                             // medio ancho de cada arco
+  const NET_DEPTH = 12;                             // fondo de la red detrás de la línea
+  const STEP = 1 / 60;                              // paso fijo de la simulación: 60 ticks por segundo
+  const GOALS_TO_WIN = 5;
+  const LEVEL_SECONDS = 12;                         // cada 12 s de juego sube un nivel de velocidad
+  const MAX_LEVEL = 10;
+
+  const R_PLAYER = 5, R_BALL = 3, R_POST = 2;
+  const PLAYER_SPEED = 1.5;                         // px por tick a nivel 0
+  const KEEPER_SPEED = 1.25;
+  const BALL_FRICTION = 0.9915;
+  const KICK_POWER = 2.3;
+  const BALL_MAX = 4.4;
+  const AI_SKILL = 0.92;
+
+  const PAL = {
+    grassA: '#2f8f3a', grassB: '#37a043', line: '#f2f2e6', shadow: 'rgba(0,0,0,.28)',
+    skin: '#f0b878', hair: '#3a2410', boot: '#201810', net: 'rgba(235,235,235,.5)',
+    bar: '#0a0a0a', gold: '#f8d838',
+  };
+
+  /* ======================================================================
+     2. FUENTE DE PÍXELES 3x5 (todo el texto se dibuja en el canvas)
+     ====================================================================== */
+  const GLYPHS = {
+    A: '010101111101101', B: '110101110101110', C: '011100100100011', D: '110101101101110',
+    E: '111100110100111', F: '111100110100100', G: '011100101101011', H: '101101111101101',
+    I: '111010010010111', J: '001001001101010', K: '101101110101101', L: '100100100100111',
+    M: '101111111101101', N: '110101101101101', O: '111101101101111', P: '110101110100100',
+    Q: '010101101111011', R: '110101110101101', S: '011100010001110', T: '111010010010010',
+    U: '101101101101111', V: '101101101101010', W: '101101111111101', X: '101101010101101',
+    Y: '101101010010010', Z: '111001010100111',
+    0: '111101101101111', 1: '010110010010111', 2: '110001010100111', 3: '110001010001110',
+    4: '101101111001001', 5: '111100110001110', 6: '011100111101111', 7: '111001010010010',
+    8: '111101111101111', 9: '111101111001110',
+    ':': '000010000010000', '-': '000000111000000', '!': '010010010000010', '.': '000000000000010',
+    '/': '001001010100100', '?': '110001010000010', '>': '100010001010100', '+': '000010111010000',
+    ' ': '000000000000000',
+  };
+
+  const canvas = document.getElementById('screen');
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  const rect = (x, y, w, h, color) => { ctx.fillStyle = color; ctx.fillRect(Math.round(x), Math.round(y), w, h); };
+
+  /** Dibuja texto con la fuente de píxeles. `color` puede ser una función de la fila (para degradados). */
+  const textWidth = (str, scale) => str.length * 4 * scale - scale;
+  const text = (str, x, y, scale, color, align = 'left') => {
+    str = String(str).toUpperCase();
+    let cx = align === 'center' ? x - Math.floor(textWidth(str, scale) / 2) : align === 'right' ? x - textWidth(str, scale) : x;
+    for (const ch of str) {
+      const g = GLYPHS[ch] || GLYPHS['?'];
+      for (let i = 0; i < 15; i++) {
+        if (g[i] !== '1') continue;
+        const row = Math.floor(i / 3), col = i % 3;
+        rect(cx + col * scale, y + row * scale, scale, scale, typeof color === 'function' ? color(row) : color);
+      }
+      cx += 4 * scale;
+    }
+  };
+
+  /* ======================================================================
+     3. SONIDO (bips de onda cuadrada, como una consola de 8 bits)
+     ====================================================================== */
+  const audio = (() => {
+    let ac = null, muted = false;
+    const init = () => {
+      if (ac) { if (ac.resume) ac.resume(); return; }
+      try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ac = null; }
+    };
+    const beep = (f, d, v = .06, slide) => {
+      if (!ac || muted) return;
+      const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime;
+      o.type = 'square';
+      o.frequency.setValueAtTime(f, t);
+      if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + d);
+      g.gain.setValueAtTime(v, t);
+      g.gain.exponentialRampToValueAtTime(.0001, t + d);
+      o.connect(g).connect(ac.destination);
+      o.start(t); o.stop(t + d + .02);
+    };
+    return {
+      init,
+      kick: () => beep(240, .08, .08, 110),
+      bump: () => beep(150, .05, .04),
+      post: () => beep(560, .1, .05, 280),
+      whistle: () => beep(880, .22, .05, 700),
+      select: () => beep(660, .06, .05),
+      goal: () => [262, 330, 392, 523].forEach((f, i) => setTimeout(() => beep(f, .16, .07), i * 110)),
+      toggle: () => { muted = !muted; },
+    };
+  })();
+
+  /* ======================================================================
+     4. ENTRADA: P1 = W A S D (+ Espacio) · P2 = flechas (+ Enter)
+     ====================================================================== */
+  const keys = new Set();
+  const CONTROL_CODES = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Enter', 'NumpadEnter']);
+
+  const axis = (neg, pos) => (keys.has(pos) ? 1 : 0) - (keys.has(neg) ? 1 : 0);
+  const readInput = id => {
+    let x, y, kick;
+    if (id === 1) {
+      x = axis('KeyA', 'KeyD'); y = axis('KeyW', 'KeyS');
+      kick = keys.has('Space');
+      if (!twoPlayers) { x += axis('ArrowLeft', 'ArrowRight'); y += axis('ArrowUp', 'ArrowDown'); kick = kick || keys.has('Enter'); }
+    } else {
+      x = axis('ArrowLeft', 'ArrowRight'); y = axis('ArrowUp', 'ArrowDown');
+      kick = keys.has('Enter') || keys.has('NumpadEnter');
+    }
+    const l = Math.hypot(x, y);
+    if (l > 1) { x /= l; y /= l; }
+    return { x, y, kick };
+  };
+
+  /* ======================================================================
+     5. ESTADO DEL JUEGO
+     ====================================================================== */
+  let state = 'menu';            // menu | ready | play | goal | over | pause
+  let resumeState = 'play';      // a dónde vuelve la pausa
+  let menuIndex = 0;             // 0 = 1 jugador vs IA, 1 = 2 jugadores
+  let twoPlayers = false;
+  let anim = 0, liveTime = 0, level = 0;
+  let stateTimer = 0, flashTeam = 0, kickTeam = 0, stillTime = 0, overLock = 0;
+  let ball = null, players = [], posts = [], teams = [];
+  let fps = 0, fpsFrames = 0, fpsClock = 0;
+
+  const speedFactor = () => 1 + 0.1 * level;
+
+  const makeBody = (x, y, r, mass, rest) => ({ x, y, vx: 0, vy: 0, r, im: mass ? 1 / mass : 0, e: rest });
+
+  const makeTeams = () => [
+    { index: 0, dir: 1, name: 'P1', color: '#d94a3a', dark: '#8c241a', glove: '#f8d838', score: 0 },
+    { index: 1, dir: -1, name: 'P2', color: '#3a62d9', dark: '#1f3a8c', glove: '#38e0d8', score: 0 },
+  ];
+
+  function newMatch(two) {
+    twoPlayers = two;
+    teams = makeTeams();
+    teams[1].name = two ? 'P2' : 'IA';
+    players = [];
+    for (const t of teams) {
+      const field = Object.assign(makeBody(0, CY, R_PLAYER, 4, .5), { team: t, role: 'field', ctrl: t.index === 0 ? 1 : (two ? 2 : 0), kickCool: 0, aiTimer: 0, aiJitter: 0, aiCmd: { x: 0, y: 0, kick: false } });
+      const keeper = Object.assign(makeBody(0, CY, R_PLAYER, 7, .5), { team: t, role: 'keeper', ctrl: 0, kickCool: 0, aiTimer: 0, aiJitter: 0, aiCmd: { x: 0, y: 0, kick: false } });
+      players.push(field, keeper);
+    }
+    ball = makeBody(W / 2, CY, R_BALL, 1, .8);
+    posts = [];
+    for (const x of [FIELD.l, FIELD.r]) for (const s of [-1, 1]) posts.push(makeBody(x, CY + s * GOAL_HALF, R_POST, 0, .7));
+    liveTime = 0; level = 0; overLock = 0;
+    kickoff(Math.random() < .5 ? 0 : 1);
+  }
+
+  /** Coloca a todos para el saque inicial y deja una breve cuenta antes de jugar. */
+  function kickoff(team) {
+    kickTeam = team;
+    ball.x = W / 2; ball.y = CY; ball.vx = ball.vy = 0; stillTime = 0;
+    for (const p of players) {
+      const dir = p.team.dir;
+      p.vx = p.vy = 0; p.kickCool = 0;
+      if (p.role === 'field') { p.x = W / 2 - dir * (p.team.index === team ? 22 : 62); p.y = CY; }
+      else { p.x = dir > 0 ? FIELD.l + 13 : FIELD.r - 13; p.y = CY; }
+    }
+    state = 'ready'; stateTimer = 1.0;
+    audio.whistle();
+  }
+
+  /* ======================================================================
+     6. FÍSICA: choques círculo-círculo exactos con subpasos
+     ====================================================================== */
+  /**
+   * Resuelve el choque entre dos círculos: separa los cuerpos según su masa
+   * inversa e intercambia impulso con restitución `e`. Devuelve la velocidad
+   * de impacto (≥ 0) o -1 si no hay contacto.
+   */
+  function collide(a, b, e) {
+    let dx = a.x - b.x, dy = a.y - b.y;
+    const min = a.r + b.r, d2 = dx * dx + dy * dy;
+    if (d2 >= min * min) return -1;
+    const sum = a.im + b.im;
+    if (!sum) return -1;
+    let d = Math.sqrt(d2);
+    if (d < 1e-6) { dx = 1; dy = 0; d = 1; }
+    const nx = dx / d, ny = dy / d, over = min - d;
+    a.x += nx * over * (a.im / sum); a.y += ny * over * (a.im / sum);
+    b.x -= nx * over * (b.im / sum); b.y -= ny * over * (b.im / sum);
+    const vn = (a.vx - b.vx) * nx + (a.vy - b.vy) * ny;
+    if (vn >= 0) return 0;
+    const j = -(1 + e) * vn / sum;
+    a.vx += j * a.im * nx; a.vy += j * a.im * ny;
+    b.vx -= j * b.im * nx; b.vy -= j * b.im * ny;
+    return -vn;
+  }
+
+  /** Bandas, red y fondo del arco para el balón (los extremos de las bandas son los postes). */
+  function wallsBall(b) {
+    let hit = 0;
+    const inMouth = Math.abs(b.y - CY) < GOAL_HALF;
+    const yMin = FIELD.t + b.r, yMax = FIELD.b - b.r;
+    const inNet = b.x < FIELD.l || b.x > FIELD.r;
+    const lo = inNet ? CY - GOAL_HALF + b.r : yMin, hi = inNet ? CY + GOAL_HALF - b.r : yMax;
+    if (b.y < lo) { b.y = lo; if (b.vy < 0) { hit = Math.max(hit, -b.vy); b.vy = -b.vy * .9; } }
+    if (b.y > hi) { b.y = hi; if (b.vy > 0) { hit = Math.max(hit, b.vy); b.vy = -b.vy * .9; } }
+    const xMin = inMouth ? FIELD.l - NET_DEPTH + b.r : FIELD.l + b.r;
+    const xMax = inMouth ? FIELD.r + NET_DEPTH - b.r : FIELD.r - b.r;
+    const rest = inMouth ? .3 : .9; // la red amortigua; la pared rebota
+    if (b.x < xMin) { b.x = xMin; if (b.vx < 0) { hit = Math.max(hit, -b.vx); b.vx = -b.vx * rest; } }
+    if (b.x > xMax) { b.x = xMax; if (b.vx > 0) { hit = Math.max(hit, b.vx); b.vx = -b.vx * rest; } }
+    return hit;
+  }
+
+  function wallsPlayer(p) {
+    if (p.role === 'keeper') {
+      const dir = p.team.dir, home = dir > 0 ? FIELD.l : FIELD.r;
+      const x0 = dir > 0 ? home + p.r : home - 36 + p.r, x1 = dir > 0 ? home + 36 - p.r : home - p.r;
+      p.x = Math.min(Math.max(p.x, x0), x1);
+      p.y = Math.min(Math.max(p.y, CY - GOAL_HALF - 8), CY + GOAL_HALF + 8);
+      return;
+    }
+    p.x = Math.min(Math.max(p.x, FIELD.l + p.r), FIELD.r - p.r);
+    p.y = Math.min(Math.max(p.y, FIELD.t + p.r), FIELD.b - p.r);
+  }
+
+  let bumpCool = 0;
+  function resolve() {
+    for (let i = 0; i < players.length; i++) {
+      for (let j = i + 1; j < players.length; j++) collide(players[i], players[j], .5);
+    }
+    for (const p of players) {
+      const hit = collide(p, ball, ball.e);
+      if (hit >= 0) { stillTime = 0; if (hit > 1.2 && bumpCool <= 0) { audio.bump(); bumpCool = 6; } }
+    }
+    for (const post of posts) {
+      const hit = collide(ball, post, post.e);
+      if (hit > 1.2 && bumpCool <= 0) { audio.post(); bumpCool = 6; }
+      for (const p of players) collide(p, post, 0);
+    }
+    const hit = wallsBall(ball);
+    if (hit > 1.5 && bumpCool <= 0) { audio.bump(); bumpCool = 6; }
+    for (const p of players) wallsPlayer(p);
+  }
+
+  /** Avanza la física en subpasos: ningún cuerpo se desplaza más de ~1.2 px por subpaso, así no atraviesa nada. */
+  function physics() {
+    const f = speedFactor();
+    const fastest = Math.max(Math.hypot(ball.vx, ball.vy), PLAYER_SPEED * f * 1.2);
+    const n = Math.min(10, Math.max(1, Math.ceil(fastest / 1.2)));
+    for (let s = 0; s < n; s++) {
+      ball.x += ball.vx / n; ball.y += ball.vy / n;
+      for (const p of players) { p.x += p.vx / n; p.y += p.vy / n; }
+      resolve();
+    }
+    ball.vx *= BALL_FRICTION; ball.vy *= BALL_FRICTION;
+    const sp = Math.hypot(ball.vx, ball.vy), cap = BALL_MAX * f;
+    if (sp > cap) { ball.vx *= cap / sp; ball.vy *= cap / sp; }
+    if (bumpCool > 0) bumpCool--;
+  }
+
+  /** Patada: si el balón está al alcance, recibe un impulso en la dirección jugador → balón. */
+  function tryKick(p) {
+    if (p.kickCool > 0) return;
+    const dx = ball.x - p.x, dy = ball.y - p.y, d = Math.hypot(dx, dy) || 1;
+    if (d > p.r + ball.r + 3) return;
+    const power = KICK_POWER * speedFactor();
+    ball.vx += dx / d * power; ball.vy += dy / d * power;
+    p.kickCool = 14;
+    audio.kick();
+  }
+
+  /* ======================================================================
+     7. INTELIGENCIA ARTIFICIAL: seguimiento autónomo del balón
+     ====================================================================== */
+  const norm = (x, y) => { const l = Math.hypot(x, y) || 1; return { x: x / l, y: y / l }; };
+
+  function segDist(p, a, b) {
+    const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy || 1;
+    const t = Math.min(1, Math.max(0, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2));
+    return Math.hypot(p.x - (a.x + dx * t), p.y - (a.y + dy * t));
+  }
+
+  /** Delantero de la IA: persigue el balón, se coloca a su espalda respecto al arco rival y dispara. */
+  function aiField(p) {
+    const t = p.team, f = speedFactor(), b = ball;
+    const goalX = t.dir > 0 ? FIELD.r : FIELD.l;
+    const rr = p.r + b.r, d = Math.hypot(b.x - p.x, b.y - p.y);
+    const lead = Math.min(18, d / (PLAYER_SPEED * f)); // anticipa dónde estará el balón
+    const bp = { x: Math.min(FIELD.r - 6, Math.max(FIELD.l + 6, b.x + b.vx * lead)), y: Math.min(FIELD.b - 6, Math.max(FIELD.t + 6, b.y + b.vy * lead)) };
+
+    // Apunta al palo lejano al arquero rival cuando está cerca del arco
+    const keeper = players.find(q => q.role === 'keeper' && q.team !== t);
+    const nearGoal = Math.abs(goalX - b.x) < 140;
+    const aimY = nearGoal ? CY + (keeper.y > CY ? -1 : 1) * GOAL_HALF * .55 : CY;
+    let tg = norm(goalX - b.x, aimY - b.y);
+    // Si el rival tapa la línea al arco, cambia el ángulo del tiro para regatearlo por el lado libre
+    let ang = p.aiJitter;
+    const foe = players.find(q => q.role === 'field' && q.team !== t);
+    if (Math.hypot(foe.x - b.x, foe.y - b.y) < 70 && segDist(foe, b, { x: goalX, y: aimY }) < 18) {
+      ang += (tg.x * (foe.y - b.y) - tg.y * (foe.x - b.x)) > 0 ? -.7 : .7;
+    }
+    const ca = Math.cos(ang), sa = Math.sin(ang);
+    tg = { x: tg.x * ca - tg.y * sa, y: tg.x * sa + tg.y * ca };
+
+    const toBall = norm(b.x - p.x, b.y - p.y);
+    const align = toBall.x * tg.x + toBall.y * tg.y;
+    let tx, ty, kick = false;
+    if (align > .9) {
+      tx = bp.x; ty = bp.y;
+      kick = d < rr + 3;
+    } else {
+      tx = bp.x - tg.x * (rr + 3); ty = bp.y - tg.y * (rr + 3);
+      if (d > rr + 2 && segDist(b, p, { x: tx, y: ty }) < rr + 4) {
+        // El camino pasa por el balón: lo rodea en arco
+        const a0 = Math.atan2(p.y - b.y, p.x - b.x), a1 = Math.atan2(ty - b.y, tx - b.x);
+        let da = a1 - a0; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
+        const a = a0 + Math.min(.9, Math.max(-.9, da)), r = rr + 8;
+        tx = b.x + Math.cos(a) * r; ty = b.y + Math.sin(a) * r;
+      }
+    }
+    const dx = tx - p.x, dy = ty - p.y, l = Math.hypot(dx, dy);
+    return { x: l < 1.2 ? 0 : dx / l, y: l < 1.2 ? 0 : dy / l, kick: kick && !p.kickPrev };
+  }
+
+  /** Arquero: se desliza sobre su línea hacia donde llegará el balón y sale a despejar si lo tiene cerca. */
+  function aiKeeper(k) {
+    const t = k.team, b = ball, f = speedFactor();
+    const home = t.dir > 0 ? FIELD.l + 13 : FIELD.r - 13;
+    let ty;
+    const toward = b.vx * t.dir < -.15; // el balón viene hacia su arco
+    if (toward) {
+      const time = (home - b.x) / b.vx;
+      ty = b.y + b.vy * time;
+    } else ty = CY + (b.y - CY) * .55;
+    ty += k.aiJitter * 260; // el arquero no es perfecto: se equivoca unos píxeles al calcular la trayectoria
+    ty = Math.min(CY + GOAL_HALF + 6, Math.max(CY - GOAL_HALF - 6, ty));
+    let tx = home;
+    const d = Math.hypot(b.x - k.x, b.y - k.y);
+    const ballInBox = Math.abs(b.x - (t.dir > 0 ? FIELD.l : FIELD.r)) < 40 && Math.abs(b.y - CY) < GOAL_HALF + 12;
+    if (ballInBox && Math.hypot(b.vx, b.vy) < 1.2) { tx = b.x; ty = b.y; }
+    const dx = tx - k.x, dy = ty - k.y;
+    const dead = 1.5;
+    return { x: Math.abs(dx) < dead ? 0 : Math.sign(dx), y: Math.abs(dy) < dead ? 0 : Math.sign(dy), kick: d < k.r + ball.r + 3 && !k.kickPrev };
+  }
+
+  function aiControl(p) {
+    p.aiTimer -= STEP;
+    if (p.aiTimer <= 0) {
+      p.aiTimer = p.role === 'keeper' ? 0.02 : 0.05;
+      p.aiJitter = (Math.random() - .5) * .16;
+      p.aiCmd = p.role === 'keeper' ? aiKeeper(p) : aiField(p);
+    }
+    return p.aiCmd;
+  }
+
+  /* ======================================================================
+     8. ACTUALIZACIÓN POR TICK (60 por segundo)
+     ====================================================================== */
+  function control() {
+    const f = speedFactor();
+    for (const p of players) {
+      let c = p.ctrl ? readInput(p.ctrl) : aiControl(p);
+      const human = !!p.ctrl;
+      const max = (p.role === 'keeper' ? KEEPER_SPEED : PLAYER_SPEED) * f * (human ? 1 : AI_SKILL);
+      p.vx += (c.x * max - p.vx) * .32;
+      p.vy += (c.y * max - p.vy) * .32;
+      if (p.kickCool > 0) p.kickCool--;
+      if (c.kick) tryKick(p);
+      p.kickPrev = c.kick;
+    }
+  }
+
+  function tick() {
+    anim++;
+    if (state === 'ready') {
+      stateTimer -= STEP;
+      if (stateTimer <= 0) state = 'play';
+    } else if (state === 'play') {
+      liveTime += STEP;
+      level = Math.min(MAX_LEVEL, Math.floor(liveTime / LEVEL_SECONDS));
+      control();
+      physics();
+      stillTime = Math.hypot(ball.vx, ball.vy) < .05 ? stillTime + STEP : 0;
+      if (stillTime > 5) { // balón atascado: pequeño empujón hacia el centro
+        const n = norm(W / 2 - ball.x, CY - ball.y);
+        ball.vx += n.x * 1.2; ball.vy += n.y * 1.2; stillTime = 0;
+      }
+      checkGoal();
+    } else if (state === 'goal') {
+      for (const p of players) { p.vx *= .8; p.vy *= .8; }
+      physics();
+      stateTimer -= STEP;
+      if (stateTimer <= 0) {
+        if (teams.some(t => t.score >= GOALS_TO_WIN)) { state = 'over'; overLock = 1.2; audio.whistle(); }
+        else kickoff(1 - flashTeam);
+      }
+    } else if (state === 'over') {
+      if (overLock > 0) overLock -= STEP;
+    }
+  }
+
+  /** Gol: el balón cruza por completo la línea de fondo, entre los postes. */
+  function checkGoal() {
+    if (Math.abs(ball.y - CY) >= GOAL_HALF) return;
+    let scorer = -1;
+    if (ball.x + ball.r < FIELD.l) scorer = 1;        // entra en el arco izquierdo: anota P2/IA
+    else if (ball.x - ball.r > FIELD.r) scorer = 0;   // entra en el arco derecho: anota P1
+    if (scorer < 0) return;
+    teams[scorer].score++;
+    flashTeam = scorer;
+    state = 'goal'; stateTimer = 1.8;
+    audio.goal();
+  }
+
+  /* ======================================================================
+     9. DIBUJO
+     ====================================================================== */
+  /** Círculo de 1 px con el algoritmo del punto medio (sin suavizado). */
+  function pixelCircle(g, cx, cy, r, color) {
+    let x = r, y = 0, err = 1 - r;
+    g.fillStyle = color;
+    const plot = (a, b) => { g.fillRect(cx + a, cy + b, 1, 1); };
+    while (x >= y) {
+      plot(x, y); plot(y, x); plot(-y, x); plot(-x, y); plot(-x, -y); plot(-y, -x); plot(y, -x); plot(x, -y);
+      y++;
+      if (err < 0) err += 2 * y + 1; else { x--; err += 2 * (y - x) + 1; }
+    }
+  }
+
+  /** La cancha no cambia: se dibuja una vez en un lienzo aparte. */
+  const fieldLayer = (() => {
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
+    // césped en franjas
+    const bandH = 13;
+    for (let y = FIELD.t, i = 0; y < FIELD.b; y += bandH, i++) {
+      g.fillStyle = i % 2 ? PAL.grassA : PAL.grassB;
+      g.fillRect(FIELD.l - NET_DEPTH, y, FIELD.r - FIELD.l + NET_DEPTH * 2, Math.min(bandH, FIELD.b - y));
+    }
+    // zona detrás de los arcos más oscura
+    g.fillStyle = 'rgba(0,0,0,.28)';
+    g.fillRect(FIELD.l - NET_DEPTH, FIELD.t, NET_DEPTH, FIELD.b - FIELD.t);
+    g.fillRect(FIELD.r, FIELD.t, NET_DEPTH, FIELD.b - FIELD.t);
+    // líneas
+    g.fillStyle = PAL.line;
+    const gt = CY - GOAL_HALF, gb = CY + GOAL_HALF;
+    g.fillRect(FIELD.l, FIELD.t, FIELD.r - FIELD.l + 1, 1);                 // banda superior
+    g.fillRect(FIELD.l, FIELD.b, FIELD.r - FIELD.l + 1, 1);                 // banda inferior
+    g.fillRect(FIELD.l, FIELD.t, 1, gt - FIELD.t); g.fillRect(FIELD.l, gb, 1, FIELD.b - gb + 1);
+    g.fillRect(FIELD.r, FIELD.t, 1, gt - FIELD.t); g.fillRect(FIELD.r, gb, 1, FIELD.b - gb + 1);
+    g.fillRect(W / 2, FIELD.t, 1, FIELD.b - FIELD.t);                       // línea central
+    pixelCircle(g, W / 2, CY, 22, PAL.line);
+    g.fillRect(W / 2 - 1, CY - 1, 3, 3);
+    for (const x of [FIELD.l, FIELD.r]) {                                  // áreas
+      const s = x === FIELD.l ? 1 : -1;
+      g.fillRect(Math.min(x, x + s * 38), CY - 44, 39, 1);
+      g.fillRect(Math.min(x, x + s * 38), CY + 44, 39, 1);
+      g.fillRect(x + s * 38 - (s < 0 ? 0 : 0), CY - 44, 1, 89);
+      g.fillRect(Math.min(x, x + s * 16), CY - 30, 17, 1);
+      g.fillRect(Math.min(x, x + s * 16), CY + 30, 17, 1);
+      g.fillRect(x + s * 16, CY - 30, 1, 61);
+    }
+    // redes de los arcos
+    g.fillStyle = PAL.net;
+    for (const x0 of [FIELD.l - NET_DEPTH, FIELD.r + 1]) {
+      for (let y = gt; y < gb; y += 3) for (let x = x0; x < x0 + NET_DEPTH; x += 3) g.fillRect(x + ((y / 3) % 2 ? 1 : 0), y, 1, 1);
+      g.fillRect(x0, gt, NET_DEPTH, 1); g.fillRect(x0, gb - 1, NET_DEPTH, 1);
+    }
+    g.fillStyle = PAL.line;
+    g.fillRect(FIELD.l - NET_DEPTH, gt, 1, gb - gt); g.fillRect(FIELD.r + NET_DEPTH, gt, 1, gb - gt);
+    return c;
+  })();
+
+  function drawMan(p) {
+    const x = Math.round(p.x), y = Math.round(p.y), t = p.team, keeper = p.role === 'keeper';
+    const moving = Math.hypot(p.vx, p.vy) > .35;
+    const step = moving ? Math.floor(anim / 5) % 2 : 0;
+    rect(x - 4, y + 4, 9, 1, PAL.shadow);
+    // piernas y botas
+    rect(x - 2, y + 1, 2, 3 - step, '#f4f4f4'); rect(x - 2, y + 4 - step, 2, 1, PAL.boot);
+    rect(x + 1, y + 1, 2, 2 + step, '#f4f4f4'); rect(x + 1, y + 3 + step, 2, 1, PAL.boot);
+    // torso con franja
+    rect(x - 3, y - 3, 7, 4, keeper ? t.glove : t.color);
+    rect(x - 3, y - 1, 7, 1, keeper ? '#a08a18' : t.dark);
+    // brazos (el arquero los abre con guantes)
+    if (keeper) { rect(x - 5, y - 5, 2, 3, t.color); rect(x + 4, y - 5, 2, 3, t.color); rect(x - 5, y - 6, 2, 1, '#fff'); rect(x + 4, y - 6, 2, 1, '#fff'); }
+    else { rect(x - 4, y - 3, 1, 3, PAL.skin); rect(x + 4, y - 3, 1, 3, PAL.skin); }
+    // cabeza
+    rect(x - 1, y - 6, 3, 3, PAL.skin); rect(x - 1, y - 6, 3, 1, PAL.hair);
+    // marca del jugador humano sobre la cabeza
+    if (p.ctrl) { rect(x - 1, y - 10, 3, 1, '#fff'); rect(x, y - 9, 1, 1, '#fff'); }
+  }
+
+  function drawBall() {
+    const x = Math.round(ball.x), y = Math.round(ball.y);
+    rect(x - 2, y + 3, 5, 1, PAL.shadow);
+    rect(x - 1, y - 3, 3, 1, '#fff'); rect(x - 2, y - 2, 5, 5, '#fff'); rect(x - 1, y + 3, 3, 1, '#fff');
+    rect(x, y - 1, 1, 1, '#222'); rect(x - 2, y + 1, 1, 1, '#999'); rect(x + 2, y - 1, 1, 1, '#999');
+  }
+
+  function drawScoreboard() {
+    rect(0, 0, W, FIELD.t - 4, PAL.bar);
+    rect(0, FIELD.t - 5, W, 1, '#222');
+    const [a, b] = teams;
+    text(a.name, 8, 4, 2, a.color);
+    text(String(a.score), 8, 14, 3, '#fff');
+    text(b.name, W - 8, 4, 2, b.color, 'right');
+    text(String(b.score), W - 8, 14, 3, '#fff', 'right');
+    // tiempo y barra de velocidad progresiva
+    const s = Math.floor(liveTime), mm = String(Math.floor(s / 60)).padStart(2, '0'), ss = String(s % 60).padStart(2, '0');
+    text(`${mm}:${ss}`, W / 2, 3, 2, PAL.gold, 'center');
+    for (let i = 0; i < MAX_LEVEL; i++) {
+      const on = i < level;
+      rect(W / 2 - 49 + i * 10, 15, 8, 4, on ? ['#38d838', '#78d838', '#b8d838', '#f8d838', '#f8b838', '#f89838', '#f87838', '#f85838', '#f83838', '#f81878'][i] : '#2a2a2a');
+    }
+    text(`VELOCIDAD X${speedFactor().toFixed(1)}`, W / 2, 22, 1, '#aaa', 'center');
+  }
+
+  function drawFooter() {
+    rect(0, FIELD.b + 1, W, H - FIELD.b - 1, PAL.bar);
+    const hint = twoPlayers ? 'P1 WASD+ESPACIO  P2 FLECHAS+ENTER' : 'WASD MOVER  ESPACIO PATEAR';
+    text(hint, 6, 192, 1, '#8a8a8a');
+    text(`${fps} FPS`, W - 6, 192, 1, fps >= 55 ? '#58c858' : '#c86858', 'right');
+  }
+
+  function banner(str, color, sub) {
+    rect(40, 80, 240, sub ? 44 : 32, 'rgba(0,0,0,.78)');
+    rect(40, 80, 240, 1, color); rect(40, (sub ? 80 + 43 : 80 + 31), 240, 1, color);
+    text(str, W / 2, 86, 4, color, 'center');
+    if (sub) text(sub, W / 2, 112, 1, '#ddd', 'center');
+  }
+
+  function drawMenu() {
+    rect(0, 0, W, H, '#000');
+    // franjas de color estilo Atari
+    const bars = ['#f8d838', '#f0a030', '#e8603c', '#d83c78', '#b83cb8'];
+    bars.forEach((c, i) => { rect(0, 12 + i * 2, W, 1, c); rect(0, H - 22 + i * 2, W, 1, c); });
+    text('FUTBOL', W / 2, 26, 6, row => bars[row], 'center');
+    text('2D  ESTILO ATARI', W / 2, 66, 2, '#58c8d8', 'center');
+    const opts = ['1 JUGADOR VS IA', '2 JUGADORES'];
+    opts.forEach((o, i) => {
+      const y = 94 + i * 18, on = i === menuIndex;
+      if (on && Math.floor(anim / 20) % 2 === 0) text('>', 76, y, 2, PAL.gold);
+      text(o, 92, y, 2, on ? '#fff' : '#777');
+    });
+    text('P1 WASD + ESPACIO', W / 2, 136, 1, '#d94a3a', 'center');
+    text('P2 FLECHAS + ENTER', W / 2, 146, 1, '#6a8aff', 'center');
+    text(`PRIMERO A ${GOALS_TO_WIN} GOLES  LA VELOCIDAD SUBE`, W / 2, 158, 1, '#888', 'center');
+    if (Math.floor(anim / 30) % 2 === 0) text('ENTER PARA JUGAR', W / 2, 172, 1, '#fff', 'center');
+    text('M SONIDO  P PAUSA  ESC MENU', W / 2, 188, 1, '#555', 'center');
+  }
+
+  function render() {
+    if (state === 'menu') { drawMenu(); return; }
+    ctx.drawImage(fieldLayer, 0, 0);
+    // los jugadores se dibujan ordenados por profundidad (y) para que se tapen bien
+    const order = players.slice().sort((p, q) => p.y - q.y);
+    for (const p of order.filter(q => q.y <= ball.y)) drawMan(p);
+    drawBall();
+    for (const p of order.filter(q => q.y > ball.y)) drawMan(p);
+    drawScoreboard();
+    drawFooter();
+    if (state === 'ready') banner(stateTimer > .3 ? 'LISTOS' : 'YA!', '#fff');
+    else if (state === 'goal') banner(Math.floor(anim / 8) % 2 ? 'GOL!' : 'GOL!!', teams[flashTeam].color, `ANOTA ${teams[flashTeam].name}`);
+    else if (state === 'pause') banner('PAUSA', PAL.gold, 'P PARA SEGUIR  ESC MENU');
+    else if (state === 'over') {
+      const w = teams[0].score > teams[1].score ? teams[0] : teams[1];
+      banner(`GANA ${w.name}`, w.color, overLock > 0 ? '' : 'ENTER REVANCHA  ESC MENU');
+    }
+  }
+
+  /* ======================================================================
+     10. TECLADO, RATÓN Y BUCLE PRINCIPAL (requestAnimationFrame + paso fijo)
+     ====================================================================== */
+  function startFromMenu(index) { audio.select(); newMatch(index === 1); }
+
+  function onKeyDown(code) {
+    if (code === 'KeyM') { audio.toggle(); return; }
+    if (state === 'menu') {
+      if (code === 'ArrowUp' || code === 'KeyW') { menuIndex = 0; audio.select(); }
+      else if (code === 'ArrowDown' || code === 'KeyS') { menuIndex = 1; audio.select(); }
+      else if (code === 'Digit1' || code === 'Numpad1') startFromMenu(0);
+      else if (code === 'Digit2' || code === 'Numpad2') startFromMenu(1);
+      else if (code === 'Enter' || code === 'NumpadEnter' || code === 'Space') startFromMenu(menuIndex);
+      return;
+    }
+    if (code === 'Escape') { state = 'menu'; keys.clear(); return; }
+    if (code === 'KeyP' && (state === 'play' || state === 'pause' || state === 'ready' || state === 'goal')) {
+      if (state === 'pause') state = resumeState; else { resumeState = state; state = 'pause'; keys.clear(); }
+      return;
+    }
+    if (state === 'over' && overLock <= 0 && (code === 'Enter' || code === 'NumpadEnter' || code === 'Space')) newMatch(twoPlayers);
+  }
+
+  window.addEventListener('keydown', e => {
+    if (CONTROL_CODES.has(e.code)) e.preventDefault();
+    audio.init();
+    const fresh = !keys.has(e.code);
+    keys.add(e.code);
+    if (fresh) onKeyDown(e.code);
+  });
+  window.addEventListener('keyup', e => keys.delete(e.code));
+  window.addEventListener('blur', () => { keys.clear(); if (state === 'play') { resumeState = 'play'; state = 'pause'; } });
+
+  // Ratón / toque en el menú: coordenadas del canvas → opción elegida
+  canvas.addEventListener('pointerdown', e => {
+    audio.init();
+    if (state !== 'menu') return;
+    const r = canvas.getBoundingClientRect();
+    const y = (e.clientY - r.top) / r.height * H;
+    if (y >= 88 && y < 110) startFromMenu(0);
+    else if (y >= 110 && y < 130) startFromMenu(1);
+  });
+
+  /** Escala el canvas a un múltiplo entero siempre que quepa (píxeles perfectos). */
+  function fit() {
+    const sx = window.innerWidth / W, sy = window.innerHeight / H;
+    let s = Math.min(sx, sy) * .97;
+    if (s >= 2) s = Math.floor(s);
+    canvas.style.width = Math.round(W * s) + 'px';
+    canvas.style.height = Math.round(H * s) + 'px';
+  }
+  window.addEventListener('resize', fit);
+  fit();
+
+  let last = 0, acc = 0;
+  function loop(ts) {
+    const dt = Math.min(.1, (ts - last) / 1000 || 0);
+    last = ts; acc += dt;
+    while (acc >= STEP) { tick(); acc -= STEP; }
+    render();
+    fpsFrames++; fpsClock += dt;
+    if (fpsClock >= .5) { fps = Math.round(fpsFrames / fpsClock); fpsFrames = 0; fpsClock = 0; }
+    requestAnimationFrame(loop);
+  }
+
+  // Gancho de pruebas (solo con #debug en la URL)
+  if (location.hash === '#debug') {
+    window.__futbol = {
+      start: two => newMatch(!!two),
+      step: n => { for (let i = 0; i < n; i++) { if (state === 'ready') stateTimer = 0; tick(); } },
+      snap: () => ({ state, level, liveTime, scores: teams.map(t => t.score), ball: { x: ball.x, y: ball.y, vx: ball.vx, vy: ball.vy }, players: players.map(p => ({ r: p.role, x: p.x, y: p.y })) }),
+      set: o => Object.assign(ball, o), keys, players: () => players, ballRef: () => ball, setLevel: n => { liveTime = n * LEVEL_SECONDS; },
+    };
+  }
+
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

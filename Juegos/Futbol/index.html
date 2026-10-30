@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="Golazo: fútbol de discos para navegador con estadio Clásico y modo Street con poderes y combos.">
+  <title>Golazo · Fútbol de discos</title>
+
+  <!-- Tipografías: Bebas Neue (estética estadio), Permanent Marker (estética arena) y Rubik (interfaz) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Permanent+Marker&family=Rubik:wght@400;500;700;800&display=swap">
+
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="../salir.css">
+</head>
+
+<!-- La clase del body (theme-f11 / theme-street) cambia toda la estética según el estadio elegido -->
+<body class="theme-f11">
+  <main id="app">
+
+    <!-- ============================================================
+         1. MENÚ PRINCIPAL
+         ============================================================ -->
+    <section id="screen-menu" class="screen active" aria-labelledby="menu-title">
+      <!-- Decoración de portada: líneas de campo, dos discos y el balón -->
+      <svg class="menu-art" viewBox="0 0 1000 560" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <g class="art-lines" fill="none" stroke-width="3">
+          <rect x="40" y="40" width="920" height="480" rx="6"/>
+          <line x1="500" y1="40" x2="500" y2="520"/>
+          <circle cx="500" cy="280" r="90"/>
+          <rect x="40" y="190" width="110" height="180"/>
+          <rect x="850" y="190" width="110" height="180"/>
+        </g>
+        <g class="art-disc d1"><circle cx="190" cy="420" r="30"/><text x="190" y="429" text-anchor="middle">10</text></g>
+        <g class="art-disc d2"><circle cx="860" cy="130" r="30"/><text x="860" y="139" text-anchor="middle">7</text></g>
+        <g class="art-ball"><circle cx="790" cy="340" r="19"/><circle cx="790" cy="340" r="7"/></g>
+      </svg>
+
+      <div class="menu-hero">
+        <h1 id="menu-title" class="logo">GOLAZO</h1>
+        <p class="logo-sub">Clásico <span aria-hidden="true">·</span> Street</p>
+
+        <nav class="menu-actions" aria-label="Menú principal">
+          <button type="button" class="btn btn-primary btn-xl" data-action="go-mode">Jugar</button>
+          <button type="button" class="btn" data-action="show-controls">Controles</button>
+          <a href="../../index.html#videojuegos" class="btn btn-ghost">Salir al portafolio</a>
+        </nav>
+
+        <p class="menu-hint">Consejo: pulsa <kbd>Espacio</kbd> junto al balón para patearlo en la dirección en la que lo tocas.</p>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         2. SELECCIÓN DE ESTADIO
+         ============================================================ -->
+    <section id="screen-mode" class="screen" aria-labelledby="mode-title">
+      <header class="screen-header">
+        <button type="button" class="btn-back" data-action="back" data-target="menu">← Volver</button>
+        <h2 id="mode-title">Elige el estadio</h2>
+      </header>
+
+      <div class="mode-grid">
+        <!-- Clásico: campo grande de césped -->
+        <button type="button" class="mode-card mode-f11" data-action="pick-mode" data-mode="f11">
+          <span class="mode-art" aria-hidden="true"><span class="art-label">CLÁSICO</span></span>
+          <span class="mode-body">
+            <span class="mode-name">Clásico</span>
+            <span class="mode-tag">Campo grande · 1v1 a 4v4</span>
+            <span class="mode-list">
+              <span>Césped con líneas, círculo central y porterías con red</span>
+              <span>El balón rueda y rebota poco: gana el control y el pase</span>
+              <span>Saque desde el centro con el rival fuera del círculo</span>
+            </span>
+          </span>
+        </button>
+
+        <!-- Street: pista rebotona con poderes y combos -->
+        <button type="button" class="mode-card mode-street" data-action="pick-mode" data-mode="street">
+          <span class="mode-art" aria-hidden="true"><span class="art-label">STREET</span></span>
+          <span class="mode-body">
+            <span class="mode-name">Street</span>
+            <span class="mode-tag">Poderes · combos · neón</span>
+            <span class="mode-list">
+              <span>Encadena toques para subir el combo y cargar tu poder</span>
+              <span>Turbo, Tiro de fuego, Imán y Congelar (<kbd>C</kbd>)</span>
+              <span>Los goles con combo valen doble o triple</span>
+            </span>
+          </span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         3. EQUIPOS Y OPCIONES DEL PARTIDO
+         ============================================================ -->
+    <section id="screen-teams" class="screen" aria-labelledby="teams-title">
+      <header class="screen-header">
+        <button type="button" class="btn-back" data-action="back" data-target="mode">← Estadio</button>
+        <h2 id="teams-title">Elige los equipos</h2>
+        <span class="screen-chip" id="teams-mode-label">Clásico</span>
+      </header>
+
+      <div class="teams-layout">
+        <div class="team-column">
+          <h3>Equipo local (rojo)</h3>
+          <div class="team-grid" id="grid-home" role="group" aria-label="Equipo local"></div>
+        </div>
+
+        <div class="vs-badge" aria-hidden="true">VS</div>
+
+        <div class="team-column">
+          <h3>Equipo visitante</h3>
+          <div class="team-grid" id="grid-away" role="group" aria-label="Equipo visitante"></div>
+        </div>
+      </div>
+
+      <div class="options-grid">
+        <div class="options-row">
+          <span class="options-label">Jugadores por equipo</span>
+          <div class="segmented" role="group" aria-label="Jugadores por equipo">
+            <button type="button" data-action="pick-opt" data-opt="size" data-val="1">1</button>
+            <button type="button" data-action="pick-opt" data-opt="size" data-val="2">2</button>
+            <button type="button" data-action="pick-opt" data-opt="size" data-val="3">3</button>
+            <button type="button" data-action="pick-opt" data-opt="size" data-val="4">4</button>
+          </div>
+        </div>
+        <div class="options-row">
+          <span class="options-label">Humanos</span>
+          <div class="segmented" role="group" aria-label="Jugadores humanos">
+            <button type="button" data-action="pick-opt" data-opt="humans" data-val="0">0 (CPU)</button>
+            <button type="button" data-action="pick-opt" data-opt="humans" data-val="1">1</button>
+            <button type="button" data-action="pick-opt" data-opt="humans" data-val="2">2</button>
+          </div>
+        </div>
+        <div class="options-row">
+          <span class="options-label">Dificultad de la IA</span>
+          <div class="segmented" role="group" aria-label="Dificultad">
+            <button type="button" data-action="pick-diff" data-diff="facil">Fácil</button>
+            <button type="button" data-action="pick-diff" data-diff="normal">Normal</button>
+            <button type="button" data-action="pick-diff" data-diff="dificil">Difícil</button>
+          </div>
+        </div>
+        <div class="options-row">
+          <span class="options-label">Duración</span>
+          <div class="segmented" role="group" aria-label="Duración">
+            <button type="button" data-action="pick-opt" data-opt="duration" data-val="120">2 min</button>
+            <button type="button" data-action="pick-opt" data-opt="duration" data-val="180">3 min</button>
+            <button type="button" data-action="pick-opt" data-opt="duration" data-val="300">5 min</button>
+            <button type="button" data-action="pick-opt" data-opt="duration" data-val="0">Sin límite</button>
+          </div>
+        </div>
+        <div class="options-row">
+          <span class="options-label">Goles para ganar</span>
+          <div class="segmented" role="group" aria-label="Goles para ganar">
+            <button type="button" data-action="pick-opt" data-opt="goals" data-val="3">3</button>
+            <button type="button" data-action="pick-opt" data-opt="goals" data-val="5">5</button>
+            <button type="button" data-action="pick-opt" data-opt="goals" data-val="10">10</button>
+            <button type="button" data-action="pick-opt" data-opt="goals" data-val="0">Sin límite</button>
+          </div>
+        </div>
+      </div>
+
+      <footer class="screen-footer">
+        <p class="matchup" id="matchup"></p>
+        <button type="button" class="btn btn-primary" data-action="start">¡Al campo!</button>
+      </footer>
+    </section>
+
+    <!-- ============================================================
+         4. PARTIDO: canvas + HUD + pausa + controles táctiles
+         ============================================================ -->
+    <section id="screen-game" class="screen" aria-label="Partido">
+      <div id="game-wrap">
+        <canvas id="game-canvas" width="1280" height="720" aria-label="Campo de juego"></canvas>
+
+        <!-- HUD superpuesto al canvas -->
+        <div id="hud">
+          <div class="hud-top">
+            <div class="hud-team home">
+              <span class="hud-name" id="hud-name-home"></span>
+              <span class="badge" id="hud-badge-home"></span>
+            </div>
+            <div class="hud-center">
+              <div class="hud-score">
+                <span id="hud-score-home">0</span><span class="sep">-</span><span id="hud-score-away">0</span>
+              </div>
+              <div class="hud-time" id="hud-time">0:00</div>
+            </div>
+            <div class="hud-team away">
+              <span class="badge" id="hud-badge-away"></span>
+              <span class="hud-name" id="hud-name-away"></span>
+            </div>
+          </div>
+          <div class="hud-mode" id="hud-mode">Clásico</div>
+
+          <!-- Combos (solo Street): uno por equipo, bajo el marcador -->
+          <div class="hud-combos only-street" aria-live="off">
+            <span class="hud-combo home" id="hud-combo-home"></span>
+            <span class="hud-combo away" id="hud-combo-away"></span>
+          </div>
+
+          <div id="hud-banner" class="hud-banner" aria-live="polite"></div>
+
+          <div class="hud-bottom">
+            <div class="hud-power only-street home" id="hud-power-home">
+              <span class="pw-label" id="pw-label-home">Poder</span>
+              <span class="pw-track"><span class="pw-fill" id="pw-fill-home"></span></span>
+            </div>
+            <ul class="hud-controls" aria-label="Guía de teclado">
+              <li><kbd>WASD</kbd> / <kbd>←↑↓→</kbd> Mover</li>
+              <li><kbd>Espacio</kbd> / <kbd>X</kbd> Patear</li>
+              <li class="only-street"><kbd>C</kbd> Poder</li>
+              <li><kbd>P</kbd> Pausa</li>
+            </ul>
+            <div class="hud-power only-street away" id="hud-power-away">
+              <span class="pw-label" id="pw-label-away">Poder</span>
+              <span class="pw-track"><span class="pw-fill" id="pw-fill-away"></span></span>
+            </div>
+          </div>
+
+          <button type="button" class="hud-pause" data-action="pause" aria-label="Pausa">❚❚</button>
+          <a class="exit-btn hud-exit" href="../../index.html#videojuegos" aria-label="Salir del juego y volver al portafolio" title="Volver al portafolio">&larr; Salir</a>
+        </div>
+
+        <!-- Controles táctiles (solo se muestran en pantallas táctiles) -->
+        <div id="touch-controls" aria-hidden="true">
+          <div class="joystick" id="joystick"><div class="joy-knob" id="joy-knob"></div></div>
+          <div class="touch-buttons">
+            <button type="button" class="tbtn t-power only-street" id="btn-power">Poder</button>
+            <button type="button" class="tbtn t-kick" id="btn-kick">Patear</button>
+          </div>
+        </div>
+
+        <!-- Menú de pausa -->
+        <div id="pause-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+          <div class="modal">
+            <h2 id="pause-title">Pausa</h2>
+            <div class="modal-actions">
+              <button type="button" class="btn btn-primary" data-action="resume">Reanudar</button>
+              <button type="button" class="btn" data-action="restart">Reiniciar partido</button>
+              <button type="button" class="btn" data-action="show-controls">Controles</button>
+              <button type="button" class="btn btn-ghost" data-action="quit">Abandonar partido</button>
+              <a href="../../index.html#videojuegos" class="btn btn-ghost">Salir al portafolio</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         5. FIN DEL PARTIDO
+         ============================================================ -->
+    <section id="screen-end" class="screen" aria-labelledby="end-title">
+      <article class="end-card panel" id="end-card">
+        <p class="end-mode" id="end-mode"></p>
+        <h2 id="end-title">Final</h2>
+
+        <div class="end-score">
+          <div class="end-team" id="end-home"></div>
+          <div class="end-result" id="end-result">0 - 0</div>
+          <div class="end-team" id="end-away"></div>
+        </div>
+
+        <div class="end-scorers">
+          <ul id="end-scorers-home" aria-label="Goles del equipo local"></ul>
+          <ul id="end-scorers-away" aria-label="Goles del equipo visitante"></ul>
+        </div>
+
+        <div class="end-stats" id="end-stats"></div>
+
+        <div class="end-actions">
+          <button type="button" class="btn btn-primary" data-action="rematch">Revancha</button>
+          <button type="button" class="btn" data-action="change-teams">Cambiar equipos</button>
+          <button type="button" class="btn btn-ghost" data-action="menu">Menú principal</button>
+          <a href="../../index.html#videojuegos" class="btn btn-ghost">Salir al portafolio</a>
+        </div>
+      </article>
+    </section>
+
+    <!-- ============================================================
+         MODAL DE CONTROLES
+         ============================================================ -->
+    <div id="controls-modal" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="controls-title">
+      <div class="modal">
+        <h2 id="controls-title">Controles</h2>
+        <table class="controls-table">
+          <tbody>
+            <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td><b>Jugador 1</b>: mover (con un solo humano también valen las flechas)</td></tr>
+            <tr><td><kbd>Espacio</kbd> / <kbd>X</kbd> / <kbd>Z</kbd></td><td><b>Jugador 1</b>: patear. El borde de tu disco se pone blanco</td></tr>
+            <tr><td><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd></td><td><b>Jugador 2</b> (modo 2 humanos): mover</td></tr>
+            <tr><td><kbd>Enter</kbd> / <kbd>Shift der.</kbd></td><td><b>Jugador 2</b>: patear</td></tr>
+            <tr><td><kbd>C</kbd> / <kbd>Shift izq.</kbd></td><td><b>Jugador 1</b> (Street): usar el poder cargado</td></tr>
+            <tr><td><kbd>/</kbd> / <kbd>Ctrl der.</kbd></td><td><b>Jugador 2</b> (Street): usar el poder cargado</td></tr>
+            <tr><td><kbd>P</kbd> / <kbd>Esc</kbd></td><td>Pausa</td></tr>
+            <tr><td><kbd>M</kbd></td><td>Activar o silenciar el sonido</td></tr>
+          </tbody>
+        </table>
+        <p class="modal-note">La patada empuja el balón desde tu disco hacia donde está: colócate detrás del balón, apunta a la portería y patea. Mientras mantienes la patada te mueves algo más despacio.</p>
+        <p class="modal-note"><b>Street:</b> cada patada seguida de tu equipo (menos de 1,6 s entre ellas) sube el combo y carga la barra de poder. Con la barra llena sale un poder al azar: <b>Turbo</b>, <b>Tiro de fuego</b>, <b>Imán</b> o <b>Congelar</b>. Un gol con combo x3 vale 2 y con combo x6 vale 3.</p>
+        <button type="button" class="btn btn-primary" data-action="close-controls">Entendido</button>
+      </div>
+    </div>
+
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

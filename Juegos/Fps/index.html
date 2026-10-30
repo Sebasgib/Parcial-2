@@ -5,9 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Barras Bravas FPS</title>
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="../salir.css">
 </head>
 <body>
 <canvas id="c"></canvas>
+
+<!-- Con el ratón capturado no se puede pulsar: pausa con Esc para usarlo (también está en el panel de pausa) -->
+<a class="exit-btn" href="../../index.html#videojuegos" aria-label="Salir del juego y volver al portafolio" title="Volver al portafolio">&larr; Salir</a>
 
 <div id="hud" class="hidden">
   <div id="crosshair"></div>
@@ -34,6 +38,7 @@
   <div class="panel">
     <h2>PAUSA</h2>
     <p>Haz clic para volver a la tribuna</p>
+    <p class="keys">¿Terminaste? Usa el botón <b>← Salir</b> de arriba a la izquierda para volver al portafolio.</p>
     <p class="keys">WASD mover · Mouse apuntar · Clic atacar · 1-6 / rueda armas · Q arma anterior · Espacio saltar · Shift correr · M sonido</p>
   </div>
 </div>

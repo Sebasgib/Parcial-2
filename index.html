@@ -24,6 +24,7 @@
             </div>
             <nav class="site-nav" aria-label="Navegación principal">
                 <a href="index.html" class="active" aria-current="page">Inicio</a>
+                <a href="index.html#videojuegos">Videojuegos</a>
                 <a href="blog.html">Blog</a>
                 <a href="contacto.html">Contacto</a>
             </nav>
@@ -53,10 +54,10 @@
     <!-- Sección: Video -->
     <section id="video-presentacion" class="container section-box reveal">
         <h3 class="section-title"><i class="bi bi-camera-reels" aria-hidden="true"></i> Video</h3>
-        <p class="video-meta">Duración: 47 min</p>
+        <p class="video-meta">Duración: 46 s</p>
         <video class="project-video" controls preload="metadata">
-            <source src="Video/0918.mp4" type="video/mp4">
-            Tu navegador no admite la reproducción de video. <a href="Video/0918.mp4">Descarga el video aquí</a>.
+            <source src="Video/Mapache.mp4" type="video/mp4">
+            Tu navegador no admite la reproducción de video. <a href="Video/Mapache.mp4">Descarga el video aquí</a>.
         </video>
     </section>
 
@@ -104,8 +105,56 @@
         </div>
     </section>
 
+    <!-- Sección: Videojuegos (cada juego vive en su propia carpeta dentro de Juegos/) -->
+    <section id="videojuegos" class="container section-box bg-light reveal">
+        <h3 class="section-title"><i class="bi bi-controller" aria-hidden="true"></i> Videojuegos</h3>
+        <p class="section-intro">Juegos creados por mí que se juegan directo en el navegador. Elige uno y pulsa <strong>Jugar</strong>.</p>
+        <div class="grid-projects">
+            <article class="project-card game-card">
+                <a href="Juegos/Futbol/index.html" class="game-thumb" aria-label="Jugar Golazo">
+                    <img src="Juegos/Futbol/portada.jpg" width="960" height="540" loading="lazy" decoding="async" alt="Partido de Golazo en el modo Street: discos de fútbol sobre una pista de neón con marcador y barras de poder" class="project-img">
+                </a>
+                <h4><i class="bi bi-trophy" aria-hidden="true"></i> Golazo &mdash; Fútbol de discos</h4>
+                <p><strong>Tecnología:</strong> HTML5 Canvas y JavaScript</p>
+                <p>Fútbol de discos para 1 o 2 jugadores con estadio Clásico y modo Street, que añade poderes (Turbo, Tiro de fuego, Imán y Congelar) y combos que multiplican los goles. Incluye IA con tres dificultades.</p>
+                <div class="game-tags" aria-label="Etiquetas"><span>1-2 jugadores</span><span>Deportes</span><span>2D</span></div>
+                <a href="Juegos/Futbol/index.html" class="btn-hero game-play"><i class="bi bi-play-fill" aria-hidden="true"></i> Jugar</a>
+            </article>
+            <article class="project-card game-card">
+                <a href="Juegos/Flight/index.html" class="game-thumb" aria-label="Jugar Cielo en disputa">
+                    <img src="Juegos/Flight/portada.jpg" width="960" height="540" loading="lazy" decoding="async" alt="Caza y bombarderos en 3D low poly sobre un océano al atardecer, con islas, nubes y un faro" class="project-img">
+                </a>
+                <h4><i class="bi bi-airplane" aria-hidden="true"></i> Cielo en disputa &mdash; Combate aéreo</h4>
+                <p><strong>Tecnología:</strong> Three.js (WebGL) y JavaScript</p>
+                <p>Misión de defensa en 3D low poly ambientada en una historia alternativa de 1945: intercepta seis bombarderos entre islas, barcos, gaviotas y un faro, con un atardecer que cambia durante la partida.</p>
+                <div class="game-tags" aria-label="Etiquetas"><span>1 jugador</span><span>Acción</span><span>3D</span></div>
+                <a href="Juegos/Flight/index.html" class="btn-hero game-play"><i class="bi bi-play-fill" aria-hidden="true"></i> Jugar</a>
+            </article>
+            <article class="project-card game-card">
+                <a href="Juegos/Fps/index.html" class="game-thumb" aria-label="Jugar Barras Bravas FPS">
+                    <img src="Juegos/Fps/portada.jpg" width="960" height="540" loading="lazy" decoding="async" alt="Menú de Barras Bravas FPS con la selección de barra propia, barra rival y escenario" class="project-img">
+                </a>
+                <h4><i class="bi bi-bullseye" aria-hidden="true"></i> Barras Bravas FPS &mdash; Disparos en primera persona</h4>
+                <p><strong>Tecnología:</strong> Three.js (WebGL) y JavaScript</p>
+                <p>FPS 3D por oleadas: defiende tu tribuna o las afueras del estadio con bates, bengalas y resortera frente a barristas rivales y policía antimotines. Ratón para apuntar y teclado para moverte.</p>
+                <div class="game-tags" aria-label="Etiquetas"><span>1 jugador</span><span>FPS</span><span>3D</span></div>
+                <a href="Juegos/Fps/index.html" class="btn-hero game-play"><i class="bi bi-play-fill" aria-hidden="true"></i> Jugar</a>
+            </article>
+            <article class="project-card game-card">
+                <a href="Juegos/PingPong/index.html" class="game-thumb" aria-label="Jugar Pong">
+                    <img src="Juegos/PingPong/portada.jpg" width="960" height="540" loading="lazy" decoding="async" alt="Menú de Pong con los modos de juego, la dificultad de la CPU y cuatro escenarios" class="project-img">
+                </a>
+                <h4><i class="bi bi-joystick" aria-hidden="true"></i> Pong &mdash; Clásico arcade</h4>
+                <p><strong>Tecnología:</strong> HTML5 Canvas y JavaScript</p>
+                <p>Versión del clásico Pong para dos jugadores o contra la CPU, con cuatro niveles de dificultad y cuatro escenarios: Clásico, Neón, Espacial y Retro.</p>
+                <div class="game-tags" aria-label="Etiquetas"><span>1-2 jugadores</span><span>Arcade</span><span>2D</span></div>
+                <a href="Juegos/PingPong/index.html" class="btn-hero game-play"><i class="bi bi-play-fill" aria-hidden="true"></i> Jugar</a>
+            </article>
+        </div>
+    </section>
+
     <!-- Sección: Habilidades -->
-    <section id="habilidades" class="container section-box bg-light reveal">
+    <section id="habilidades" class="container section-box reveal">
         <h3 class="section-title">Habilidades Técnicas y Blandas</h3>
         <div class="skills-container">
             <span class="skill-badge"><i class="bi bi-code-slash" aria-hidden="true"></i> Desarrollo Web (HTML/CSS)</span>

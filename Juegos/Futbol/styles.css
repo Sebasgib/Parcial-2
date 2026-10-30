@@ -2,12 +2,11 @@
    GOLAZO · styles.css
    --------------------------------------------------------------------------
    1. Reset y variables comunes
-   2. Temas: Fútbol 11 (estadio clásico) y Callejero (urbano / neón)
+   2. Temas: estadio Clásico (césped) y Street (asfalto / neón, poderes y combos)
    3. Componentes base (pantallas, botones, paneles)
    4. Menú principal
-   5. Selección de modo
-   6. Selección de equipos
-   7. Alineación
+   5. Selección de estadio
+   6. Selección de equipos y opciones
    8. Partido: canvas y HUD
    9. Controles táctiles
    10. Overlays (pausa, controles)
@@ -112,9 +111,6 @@ kbd {
 
 .hidden { display: none !important; }
 
-/* Los elementos exclusivos del modo calle se ocultan en Fútbol 11 */
-body.theme-f11 .only-street { display: none !important; }
-
 /* ---------- 3. COMPONENTES BASE ---------- */
 #app { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
 
@@ -132,10 +128,19 @@ body.theme-f11 .only-street { display: none !important; }
 }
 .screen.active { display: flex; }
 
+/* Solo desvanece: deslizar la pantalla agrandaba el documento y hacía aparecer/desaparecer la barra de scroll */
 @keyframes screenIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: none; }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
+
+/* Sin barra de scroll visible: su aparición/desaparición al cambiar de pantalla corría todo el contenido de lado.
+   La rueda y el teclado siguen desplazando las pantallas largas. */
+html { scrollbar-width: none; }
+html::-webkit-scrollbar { display: none; }
+
+/* En partida no hay scroll: el campo ocupa exactamente la ventana */
+body:has(#screen-game.active) { overflow: hidden; }
 
 .panel {
   background: var(--panel);
@@ -162,6 +167,9 @@ body.theme-f11 .only-street { display: none !important; }
 .btn-primary:hover { filter: brightness(1.08); }
 .btn-primary:disabled { opacity: .45; cursor: not-allowed; transform: none; filter: grayscale(.5); }
 .btn-ghost { background: transparent; }
+
+/* Enlaces con aspecto de botón (p. ej. "Salir al portafolio") */
+a.btn { display: inline-block; text-align: center; text-decoration: none; }
 .btn-small { font-size: 1.05rem; padding: .5em 1em; }
 .btn-xl { font-size: 2rem; padding: .5em 2.4em; }
 
@@ -213,7 +221,32 @@ body.theme-street .btn-xl { font-size: 1.7rem; }
 }
 
 /* ---------- 4. MENÚ PRINCIPAL ---------- */
-.menu-hero { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+#screen-menu { position: relative; overflow: hidden; }
+
+/* Decoración de portada: campo en línea tenue con dos discos y el balón flotando */
+.menu-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: .55;
+  pointer-events: none;
+}
+.art-lines { stroke: rgba(255, 255, 255, .16); }
+.art-disc circle { stroke: #111; stroke-width: 4; }
+.art-disc text { font: 700 24px var(--font-body); }
+.art-disc.d1 circle { fill: #e5484d; }
+.art-disc.d2 circle { fill: #4c8dff; }
+.art-disc text { fill: #fff; }
+.art-ball circle:first-child { fill: #fff; stroke: #111; stroke-width: 4; }
+.art-ball circle:last-child { fill: #222; }
+.art-disc.d1 { animation: floatA 6s ease-in-out infinite; }
+.art-disc.d2 { animation: floatA 7s ease-in-out -2s infinite reverse; }
+.art-ball { animation: floatA 5s ease-in-out -1s infinite; }
+@keyframes floatA { 50% { transform: translate(14px, -18px); } }
+body.theme-street .art-lines { stroke: rgba(0, 240, 255, .22); }
+
+.menu-hero { position: relative; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 18px; }
 
 .logo {
   font-family: var(--font-display);
@@ -337,7 +370,8 @@ body.theme-street .logo {
   position: relative;
   display: grid;
   grid-template-columns: auto 1fr;
-  grid-template-areas: "badge info" "bars bars";
+  grid-template-areas: "badge info";
+  align-items: center;
   gap: 10px 12px;
   padding: 12px 12px 12px 16px;
   text-align: left;
@@ -376,14 +410,6 @@ body.theme-street .logo {
 }
 .team-info { grid-area: info; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
 .team-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.team-ovr { font-size: .78rem; color: var(--muted); }
-
-.team-bars { grid-area: bars; display: grid; gap: 4px; }
-.tbar { display: grid; grid-template-columns: 2.2rem 1fr 1.6rem; align-items: center; gap: 6px; font-size: .7rem; color: var(--muted); }
-.tbar em { font-style: normal; font-weight: 700; }
-.tbar i { position: relative; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .1); overflow: hidden; }
-.tbar i::after { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--v); background: linear-gradient(90deg, var(--accent-2), var(--accent)); border-radius: 3px; }
-.tbar b { text-align: right; color: var(--text); }
 
 .vs-badge {
   align-self: center;
@@ -393,78 +419,23 @@ body.theme-street .logo {
   text-shadow: var(--glow);
 }
 
-.options-row { width: 100%; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.options-grid { width: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 10px 24px; }
+.options-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
 .options-label { color: var(--muted); font-weight: 600; }
 
 .segmented { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; background: var(--panel); }
-.segmented button { border: 0; background: none; padding: .55em 1.2em; font-weight: 700; color: var(--muted); transition: background .15s, color .15s; }
+.segmented button { border: 0; background: none; padding: .5em 1em; font-weight: 700; color: var(--muted); transition: background .15s, color .15s; }
 .segmented button.active { background: var(--accent); color: var(--on-accent); }
 
 .matchup { flex: 1; color: var(--muted); font-weight: 600; }
 .matchup b { color: var(--text); }
-
-/* ---------- 7. ALINEACIÓN ---------- */
-.lineup-layout {
-  width: 100%;
-  display: grid;
-  grid-template-columns: 250px minmax(0, 1fr) 320px;
-  gap: 16px;
-  align-items: start;
-}
-
-.lineup-options { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
-.field { display: flex; flex-direction: column; gap: 6px; font-size: .85rem; color: var(--muted); font-weight: 600; }
-.field select {
-  padding: .6em .8em;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: rgba(0, 0, 0, .35);
-  color: var(--text);
-  font-size: 1rem;
-}
-.field select option { background: #111; }
-.lineup-count { font-family: var(--font-display); font-size: 1.6rem; letter-spacing: var(--display-spacing); }
-.lineup-count.ok { color: var(--accent-2); }
-.lineup-help { font-size: .8rem; color: var(--muted); }
-
-.squad-list { padding: 8px; display: flex; flex-direction: column; gap: 4px; max-height: 62vh; overflow-y: auto; }
-
-.squad-row {
-  display: grid;
-  grid-template-columns: 2.2rem minmax(0, 1fr) 3rem auto 1.6rem;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  background: transparent;
-  text-align: left;
-  transition: background .12s, border-color .12s;
-}
-.squad-row:hover { background: var(--panel-2); }
-.squad-row.starter { border-color: var(--accent); background: linear-gradient(90deg, var(--panel-2), transparent); }
-.sq-num { font-family: var(--font-display); font-size: 1.3rem; color: var(--muted); text-align: center; }
-.sq-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sq-pos { font-size: .7rem; font-weight: 800; text-align: center; padding: .2em .3em; border-radius: 6px; }
-.pos-POR { background: #f59e0b; color: #1a1200; }
-.pos-DEF { background: #3b82f6; color: #fff; }
-.pos-MED { background: #22c55e; color: #052e12; }
-.pos-DEL { background: #ef4444; color: #fff; }
-.sq-stats { display: flex; gap: 8px; font-size: .72rem; color: var(--muted); }
-.sq-stats span b { color: var(--text); margin-left: 2px; }
-.sq-check { color: var(--accent); font-weight: 800; text-align: center; }
-
-.lineup-preview { padding: 10px; display: grid; place-items: center; }
-#preview-canvas { width: 100%; max-width: 300px; height: auto; border-radius: 10px; }
-
-.lineup-error { flex: 1; color: #ff8a8a; font-weight: 600; min-height: 1.2em; }
 
 /* ---------- 8. PARTIDO: CANVAS Y HUD ---------- */
 #screen-game { position: relative; padding: 0; max-width: none; background: #000; gap: 0; }
 
 #game-wrap {
   position: relative;
-  width: min(100vw, calc(100vh * 16 / 9));
+  width: min(100%, calc(100vh * 16 / 9)); /* 100% y no 100vw: vw incluye la barra de scroll y provocaba desbordes */
   aspect-ratio: 16 / 9;
   overflow: hidden;
   container-type: inline-size;
@@ -511,10 +482,23 @@ body.theme-street .logo {
 .hud-score .sep { margin: 0 .25em; opacity: .7; }
 .hud-time { font-weight: 800; font-size: .8em; letter-spacing: .08em; }
 
-.hud-mode {
+/* Botón de salir dentro del HUD, arriba a la derecha; la etiqueta del modo se desplaza a su izquierda */
+.exit-btn.hud-exit {
   position: absolute;
   top: 1.6%;
   right: 1.2%;
+  left: auto;
+  z-index: 2;
+  padding: .55em 1em;
+  font-size: .76em;
+  pointer-events: auto;
+}
+.exit-btn.hud-exit:hover, .exit-btn.hud-exit:focus-visible { transform: none; }
+
+.hud-mode {
+  position: absolute;
+  top: 1.6%;
+  right: calc(1.2% + 7.6em);
   padding: .3em .8em;
   border-radius: .4em;
   background: rgba(0, 0, 0, .45);
@@ -595,11 +579,12 @@ body.theme-street .hud-banner strong { text-shadow: 0 0 12px var(--accent), 0 0 
   gap: 1em;
 }
 .hud-controls {
+  margin: 0 auto;
   list-style: none;
   display: flex;
-  flex-direction: column;
-  gap: .25em;
-  padding: .5em .7em;
+  flex-wrap: wrap;
+  gap: .4em 1.4em;
+  padding: .4em .9em;
   border-radius: .5em;
   background: rgba(0, 0, 0, .4);
   font-size: .72em;
@@ -607,15 +592,34 @@ body.theme-street .hud-banner strong { text-shadow: 0 0 12px var(--accent), 0 0 
 }
 .hud-controls kbd { font-size: .85em; }
 
-.hud-meters { display: flex; flex-direction: column; gap: .45em; width: 15em; }
-.meter { padding: .45em .6em; border-radius: .5em; background: rgba(0, 0, 0, .45); }
-.meter-label { display: block; font-size: .72em; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-bottom: .3em; }
-.meter-track { display: block; height: .55em; border-radius: 1em; background: rgba(255, 255, 255, .15); overflow: hidden; }
-.meter-fill { display: block; height: 100%; width: 100%; border-radius: 1em; background: linear-gradient(90deg, #ef4444, #f5c518 40%, #22c55e); transition: width .1s linear; }
-.meter-style .meter-fill { background: linear-gradient(90deg, #00f0ff, #ff2bd6); }
-.meter-style.full { animation: styleFull .5s ease-in-out infinite alternate; }
-.meter-style.full .meter-label::after { content: ' · ¡TIRO DE FUEGO!'; color: #ffb347; }
-@keyframes styleFull { to { box-shadow: 0 0 14px #ff2bd6, 0 0 26px #ff7a1a; } }
+/* Los elementos exclusivos de Street se ocultan en el estadio Clásico */
+body.theme-f11 .only-street { display: none !important; }
+
+/* Combos (Street): texto bajo el marcador, uno a cada lado */
+.hud-combos { position: absolute; top: 11%; left: 50%; transform: translateX(-50%); display: flex; gap: 2.4em; }
+.hud-combo {
+  min-width: 7em;
+  font-family: var(--font-display);
+  font-size: 1.9em;
+  letter-spacing: var(--display-spacing);
+  text-shadow: 0 3px 0 rgba(0, 0, 0, .5), 0 0 16px currentColor;
+  opacity: 0;
+  transform: scale(.7);
+  transition: opacity .15s, transform .2s var(--ease);
+}
+.hud-combo.home { color: #ff6b6b; text-align: right; }
+.hud-combo.away { color: #5da9ff; text-align: left; }
+.hud-combo.on { opacity: 1; transform: scale(1); }
+.hud-combo.hot { color: #ffd23f; }
+
+/* Barra de poder de cada equipo */
+.hud-power { width: 15em; padding: .45em .6em; border-radius: .5em; background: rgba(0, 0, 0, .5); }
+.pw-label { display: block; font-size: .72em; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; margin-bottom: .3em; }
+.pw-track { display: block; height: .6em; border-radius: 1em; background: rgba(255, 255, 255, .15); overflow: hidden; }
+.pw-fill { display: block; height: 100%; width: 0; border-radius: 1em; background: linear-gradient(90deg, #00f0ff, #ff2bd6); transition: width .15s linear; }
+.hud-power.ready { animation: pwReady .5s ease-in-out infinite alternate; }
+.hud-power.ready .pw-label { color: #ffd23f; }
+@keyframes pwReady { to { box-shadow: 0 0 14px #ff2bd6, 0 0 26px #00f0ff; } }
 
 /* ---------- 9. CONTROLES TÁCTILES ---------- */
 #touch-controls { display: none; position: absolute; inset: 0; pointer-events: none; }
@@ -653,7 +657,7 @@ body.touch .hud-bottom { bottom: auto; top: 13%; justify-content: flex-end; }
   right: 3%;
   bottom: 6%;
   display: grid;
-  grid-template-columns: repeat(2, 9cqw);
+  grid-template-columns: repeat(2, 11cqw);
   gap: 1.4cqw;
   pointer-events: auto;
 }
@@ -668,8 +672,8 @@ body.touch .hud-bottom { bottom: auto; top: 13%; justify-content: flex-end; }
   touch-action: none;
 }
 .tbtn.pressed { transform: scale(.92); background: var(--accent); color: var(--on-accent); }
-.t-shoot { border-color: #ef4444; }
-.t-pass { border-color: #22c55e; }
+.t-kick { border-color: #ef4444; }
+.t-power { border-color: #ff2bd6; }
 
 /* ---------- 10. OVERLAYS ---------- */
 .overlay {
@@ -734,26 +738,17 @@ body.touch .hud-bottom { bottom: auto; top: 13%; justify-content: flex-end; }
 .end-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
 
 /* ---------- 12. RESPONSIVE ---------- */
-@media (max-width: 1100px) {
-  .lineup-layout { grid-template-columns: 250px minmax(0, 1fr); }
-  .lineup-preview { grid-column: 1 / -1; }
-}
-
 @media (max-width: 860px) {
   .mode-grid { grid-template-columns: 1fr; }
   .teams-layout { grid-template-columns: 1fr; }
   .vs-badge { justify-self: center; }
-  .lineup-layout { grid-template-columns: 1fr; }
-  .squad-list { max-height: none; }
-  .squad-row { grid-template-columns: 2rem minmax(0, 1fr) 2.8rem 1.4rem; }
-  .sq-stats { grid-column: 2 / -1; grid-row: 2; }
   .screen-footer { justify-content: center; }
-  .matchup, .lineup-error { flex-basis: 100%; text-align: center; }
+  .matchup { flex-basis: 100%; text-align: center; }
 }
 
 @media (max-width: 520px) {
   .team-grid { grid-template-columns: 1fr 1fr; }
-  .team-card { grid-template-areas: "badge info" "bars bars"; padding: 10px; }
+  .team-card { padding: 10px; }
   .btn-xl { font-size: 1.6rem; }
   .controls-table td:first-child { white-space: normal; }
 }
