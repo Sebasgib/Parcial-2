@@ -84,6 +84,14 @@ let scoreFlashUntil = 0;
 let leftScore = 0;
 let rightScore = 0;
 
+// --- Datos para el historial y los récords ---
+let nombreIzq = 'Jugador 1';
+let nombreDer = 'Jugador 2';
+let rallyActual = 0;       // golpes de pala seguidos desde el último punto
+let rallyMax = 0;          // mejor intercambio del partido
+let potentesPartido = 0;   // disparos potentes realizados en el partido
+let resultadoGuardado = null; // lo que devolvió Historial.registrarPartido al terminar
+
 let matchStartTime = 0;
 let timeRemaining = MATCH_DURATION;
 
@@ -197,6 +205,7 @@ function serveAfterScore(scorerSide) {
 function handleScore(side) {
   if (side === 'izquierda') leftScore++; else rightScore++;
   lastScorer = side;
+  rallyActual = 0;
   cambiarColorBola();
   scoreFlashUntil = performance.now() + SCORE_FLASH_DURATION;
   playTone(160, 0.35, 'sawtooth', 0.15);
@@ -216,6 +225,22 @@ function endMatch() {
   else winner = 'Empate';
 
   state = STATE.GAMEOVER;
+
+  // Guarda el partido (JSON en localStorage) y recibe los logros: puesto en el Top 10
+  resultadoGuardado = Historial.registrarPartido({
+    modo,
+    dificultad: modo === 'cpu' ? dificultad : null,
+    escenario: escenarioKey,
+    nombreIzq,
+    nombreDer,
+    puntosIzq: leftScore,
+    puntosDer: rightScore,
+    duracion: Math.round(MATCH_DURATION / 1000),
+    rallyMax,
+    disparosPotentes: potentesPartido
+  });
+  HistorialUI.actualizarMejor();
+
   playTone(523, 0.15);
   setTimeout(() => playTone(659, 0.15), 150);
   setTimeout(() => playTone(784, 0.25), 300);
@@ -226,6 +251,10 @@ function resetGame() {
   rightScore = 0;
   winner = null;
   lastScorer = null;
+  rallyActual = 0;
+  rallyMax = 0;
+  potentesPartido = 0;
+  resultadoGuardado = null;
   colorBolaIndex = 0;
   cpuTarget = canvas.height / 2;
   cpuLastUpdate = 0;
@@ -309,8 +338,11 @@ function updateBallAndCollisions() {
     const esDisparoPotente = Math.abs(relativeIntersect) > UMBRAL_DISPARO_POTENTE;
 
     ball.speed = Math.min(ball.speed + ballSpeedIncrement, ballMaxSpeed);
+    rallyActual++;
+    if (rallyActual > rallyMax) rallyMax = rallyActual;
 
     if (esDisparoPotente) {
+      potentesPartido++;
       // golpear la pelota cerca del borde de la pala genera un disparo potente
       ball.speed = Math.min(ball.speed * MULTIPLICADOR_DISPARO_POTENTE, ballMaxSpeedPotente);
       ball.potente = true;
@@ -371,16 +403,20 @@ function drawScores() {
   context.textAlign = 'center';
   context.fillText(leftScore, canvas.width / 2 - 60, 60);
   context.fillText(rightScore, canvas.width / 2 + 60, 60);
+  context.font = '14px monospace';
+  context.globalAlpha = 0.6;
+  context.fillText(nombreIzq, canvas.width / 2 - 60, 82);
+  context.fillText(nombreDer, canvas.width / 2 + 60, 82);
   context.globalAlpha = 1;
 }
 
 function drawFooter() {
-  const rightLabel = modo === 'cpu' ? 'CPU (' + DIFICULTADES[dificultad].etiqueta + ')' : 'Jugador 2 (↑/↓)';
+  const rightLabel = modo === 'cpu' ? 'CPU (' + DIFICULTADES[dificultad].etiqueta + ')' : nombreDer + ' (↑/↓)';
   context.fillStyle = '#ffffff';
   context.globalAlpha = 0.45;
   context.font = '14px monospace';
   context.textAlign = 'center';
-  context.fillText('Jugador 1 (W/S)   vs   ' + rightLabel + '   |   ESC: Menú   |   Partido de 30 segundos', canvas.width / 2, canvas.height - 20);
+  context.fillText(nombreIzq + ' (W/S)   vs   ' + rightLabel + '   |   ESC: Menú   |   Partido de 30 segundos', canvas.width / 2, canvas.height - 20);
   context.globalAlpha = 1;
 }
 
@@ -404,21 +440,37 @@ function drawScoreFlash() {
   context.globalAlpha = 0.8;
   context.font = 'bold 20px monospace';
   context.textAlign = 'center';
-  context.fillText('¡Punto para ' + capitalize(lastScorer) + '!', canvas.width / 2, 100);
+  context.fillText('¡Punto para ' + (lastScorer === 'izquierda' ? nombreIzq : nombreDer) + '!', canvas.width / 2, 108);
   context.globalAlpha = 1;
 }
 
-function drawOverlayMessage(lines) {
+function drawOverlayMessage(lines, extra) {
   context.fillStyle = 'rgba(0, 0, 0, 0.6)';
-  context.fillRect(0, canvas.height / 2 - 60, canvas.width, 120);
+  context.fillRect(0, canvas.height / 2 - 70, canvas.width, extra ? 150 : 120);
   context.fillStyle = '#ffffff';
   context.textAlign = 'center';
   context.font = 'bold 28px monospace';
-  context.fillText(lines[0], canvas.width / 2, canvas.height / 2 - 8);
+  context.fillText(lines[0], canvas.width / 2, canvas.height / 2 - 18);
   if (lines[1]) {
     context.font = '18px monospace';
-    context.fillText(lines[1], canvas.width / 2, canvas.height / 2 + 24);
+    context.fillText(lines[1], canvas.width / 2, canvas.height / 2 + 14);
   }
+  if (extra) {
+    context.fillStyle = extra.color;
+    context.font = 'bold 20px monospace';
+    context.fillText(extra.texto, canvas.width / 2, canvas.height / 2 + 52);
+  }
+}
+
+// Mensaje de logro al terminar: récord absoluto, entrada al Top 10 o aviso si no se pudo guardar
+function mensajeLogro() {
+  if (!resultadoGuardado) return null;
+  if (!resultadoGuardado.guardado) return { texto: 'No se pudo guardar el partido en este navegador', color: '#ff6b6b' };
+  const mejor = resultadoGuardado.logros.slice().sort((a, b) => a.puesto - b.puesto)[0];
+  if (!mejor) return null;
+  const cat = Historial.CATEGORIAS[mejor.categoria];
+  if (mejor.esRecord) return { texto: '★ ¡NUEVO RÉCORD! ' + mejor.nombre + ': ' + mejor.puntos + ' pts (' + cat + ') ★', color: '#f1c40f' };
+  return { texto: 'Top ' + Historial.TOP + ': puesto ' + mejor.puesto + ' en ' + cat + ' (' + mejor.puntos + ' pts)', color: '#2ecc71' };
 }
 
 // bucle del juego
@@ -453,11 +505,12 @@ function loop(now) {
   drawScoreFlash();
 
   if (state === STATE.GAMEOVER) {
-    const tituloFinal = winner === 'Empate' ? '¡Empate!' : 'Gana ' + winner;
+    const nombreGanador = winner === 'Izquierda' ? nombreIzq : nombreDer;
+    const tituloFinal = winner === 'Empate' ? '¡Empate!' : 'Gana ' + nombreGanador;
     drawOverlayMessage([
       tituloFinal,
       'Marcador final: ' + leftScore + ' - ' + rightScore + '   |   ENTER: Reiniciar   |   ESC: Menú'
-    ]);
+    ], mensajeLogro());
   }
 }
 
@@ -467,11 +520,29 @@ function seleccionarOpcion(selectorGrupo, boton) {
   boton.classList.add('selected');
 }
 
+// --- Nombres de los jugadores (se recuerdan en el historial) ---
+const nameP1 = document.getElementById('name-p1');
+const nameP2 = document.getElementById('name-p2');
+
+function sincronizarNombres() {
+  // En modo CPU el lado derecho es la CPU: su campo no se puede editar
+  nameP2.disabled = modo === 'cpu';
+  nameP2.placeholder = modo === 'cpu' ? 'CPU' : 'Jugador 2';
+}
+
+(function cargarNombres() {
+  const guardados = Historial.nombres();
+  nameP1.value = guardados.j1;
+  nameP2.value = guardados.j2;
+  sincronizarNombres();
+})();
+
 document.querySelectorAll('[data-mode]').forEach(btn => {
   btn.addEventListener('click', () => {
     modo = btn.dataset.mode;
     seleccionarOpcion('[data-mode]', btn);
     difficultySection.classList.toggle('disabled', modo !== 'cpu');
+    sincronizarNombres();
   });
 });
 
@@ -491,6 +562,14 @@ document.querySelectorAll('[data-scenario]').forEach(btn => {
 });
 
 function startGame() {
+  // Los nombres vacíos vuelven a su valor por defecto; se guardan para la próxima vez
+  Historial.guardarNombres(nameP1.value, nameP2.value);
+  const nombres = Historial.nombres();
+  nombreIzq = nombres.j1;
+  nombreDer = modo === 'cpu' ? 'CPU' : nombres.j2;
+  nameP1.value = nombres.j1;
+  nameP2.value = nombres.j2;
+
   currentEscenario = ESCENARIOS[escenarioKey];
   estrellas = currentEscenario.estrellas ? generarEstrellas() : [];
   menu.style.display = 'none';
@@ -511,10 +590,14 @@ document.getElementById('start-btn').addEventListener('click', startGame);
 document.addEventListener('keydown', function (e) {
   ensureAudio();
 
-  if (e.which === 27) { // ESC vuelve al menú
-    backToMenu();
+  if (e.which === 27) { // ESC cierra el panel de historial si está abierto; si no, vuelve al menú
+    if (HistorialUI.estaAbierto()) HistorialUI.cerrar();
+    else backToMenu();
     return;
   }
+
+  // Escribiendo un nombre (o con el panel abierto) las teclas no mueven las palas
+  if (HistorialUI.estaAbierto() || (e.target && e.target.tagName === 'INPUT')) return;
 
   if (!running) return;
 

@@ -12,6 +12,7 @@
 
 <div id="menu" class="menu">
   <h1>PONG</h1>
+  <p id="best-line" class="best-line" aria-live="polite"></p>
 
   <div class="menu-section">
     <h2>Modo de juego</h2>
@@ -41,13 +42,73 @@
     </div>
   </div>
 
-  <button id="start-btn" class="start-btn">Jugar</button>
+  <div class="menu-section">
+    <h2>Nombres</h2>
+    <div class="options-row names-row">
+      <label class="name-field">J1 <input id="name-p1" maxlength="12" autocomplete="off" spellcheck="false" placeholder="Jugador 1"></label>
+      <label class="name-field">J2 <input id="name-p2" maxlength="12" autocomplete="off" spellcheck="false" placeholder="Jugador 2"></label>
+    </div>
+  </div>
+
+  <div class="menu-buttons">
+    <button id="start-btn" class="start-btn">Jugar</button>
+    <button id="history-btn" class="option" type="button">&#9733; Historial y récords</button>
+  </div>
+</div>
+
+<!-- Panel de historial y récords (datos guardados como JSON en el navegador) -->
+<div id="history" class="history-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="history-title">
+  <div class="history-panel">
+    <div class="history-head">
+      <h2 id="history-title">Historial y récords</h2>
+      <button id="history-close" class="option" type="button" aria-label="Cerrar">&#10005;</button>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button class="option selected" role="tab" data-tab="records" aria-selected="true" type="button">Récords</button>
+      <button class="option" role="tab" data-tab="historial" aria-selected="false" type="button">Historial</button>
+      <button class="option" role="tab" data-tab="stats" aria-selected="false" type="button">Estadísticas</button>
+    </div>
+
+    <section id="tab-records" class="tab-view">
+      <label class="filter">Categoría <select id="filter-category"></select></label>
+      <div class="table-wrap">
+        <table id="records-table">
+          <thead><tr><th>#</th><th>Nombre</th><th>Pts</th><th>Resultado</th><th>Categoría</th><th>Escenario</th><th>Fecha</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tab-historial" class="tab-view" hidden>
+      <div class="table-wrap">
+        <table id="history-table">
+          <thead><tr><th>Fecha</th><th>Modo</th><th>Marcador</th><th>Resultado</th><th title="Mayor intercambio de golpes seguidos">Rally</th><th title="Disparos potentes">Pot.</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tab-stats" class="tab-view" hidden>
+      <dl id="stats-list" class="stats-list"></dl>
+    </section>
+
+    <div class="history-actions">
+      <button id="btn-export" class="option" type="button">Exportar JSON</button>
+      <button id="btn-import" class="option" type="button">Importar JSON</button>
+      <input id="file-import" type="file" accept="application/json,.json" hidden>
+      <button id="btn-clear" class="option danger" type="button">Borrar datos</button>
+      <span id="history-msg" class="history-msg" role="status"></span>
+    </div>
+  </div>
 </div>
 
 <div id="game-container" class="game-container">
   <canvas width="1000" height="650" id="game"></canvas>
 </div>
 
+<script src="js/historial.js"></script>
+<script src="js/historial-ui.js"></script>
 <script src="js/script.js"></script>
 </body>
 </html>
