@@ -976,28 +976,15 @@
 
   // ─────────── Menú ───────────
   let selTeam = 'nacional', selRival = 'millonarios', selLevel = 'estadio';
+  // Los botones del menú ya vienen escritos en index.html (así la página no se mueve al cargar):
+  // aquí solo se les engancha el comportamiento.
   function buildMenu() {
-    const mk = (cont, onPick, get) => {
-      cont.innerHTML = '';
-      Object.keys(TEAMS).forEach(id => {
-        const t = TEAMS[id], b = document.createElement('button');
-        b.className = 'team'; b.dataset.id = id;
-        b.style.setProperty('--c1', t.pri); b.style.setProperty('--c2', t.sec);
-        b.innerHTML = '<span class="shirt"></span><b>' + t.short + '</b>';
-        b.addEventListener('click', () => { onPick(id); refresh(); });
-        cont.appendChild(b);
-      });
+    const bind = (cont, onPick) => {
+      cont.querySelectorAll('.team').forEach(b => b.addEventListener('click', () => { onPick(b.dataset.id); refresh(); }));
     };
-    mk($('teams-own'), id => { selTeam = id; if (selRival === id) selRival = Object.keys(TEAMS).find(k => k !== id); });
-    mk($('teams-rival'), id => { selRival = id; if (selTeam === id) selTeam = Object.keys(TEAMS).find(k => k !== id); });
-    const lv = $('levels'); lv.innerHTML = '';
-    Object.keys(LEVELS).forEach(id => {
-      const b = document.createElement('button');
-      b.className = 'level'; b.dataset.id = id;
-      b.innerHTML = '<b>' + LEVELS[id].name + '</b><span>' + LEVELS[id].desc + '</span>';
-      b.addEventListener('click', () => { selLevel = id; refresh(); });
-      lv.appendChild(b);
-    });
+    bind($('teams-own'), id => { selTeam = id; if (selRival === id) selRival = Object.keys(TEAMS).find(k => k !== id); });
+    bind($('teams-rival'), id => { selRival = id; if (selTeam === id) selTeam = Object.keys(TEAMS).find(k => k !== id); });
+    $('levels').querySelectorAll('.level').forEach(b => b.addEventListener('click', () => { selLevel = b.dataset.id; refresh(); }));
     refresh();
   }
   function refresh() {

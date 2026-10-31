@@ -20,3 +20,4 @@ Barristas rivales (barrista, lanzador de botellas, bengalero y el capo) con cort
 - `js/characters.js` personajes y armas low-poly
 - `js/levels.js` escenarios
 - `js/game.js` lógica, IA, proyectiles y HUD
+- `index.html` incluye los estilos (`<style>`) y el menú ya escrito para que la página cargue rápido y sin saltos; si cambias `TEAMS` o `LEVELS` en `js/data.js`, actualiza también los botones del menú.
