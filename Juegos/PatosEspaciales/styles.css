@@ -118,33 +118,32 @@ button, input { font: inherit; }
 [data-screen="studio"] .viewport canvas { touch-action: manipulation; }
 .effects { pointer-events: none; }
 
-.aim-beam {
+.hand-reticle {
     position: absolute;
     top: 0;
     left: 0;
-    height: 3px;
-    transform-origin: 0 0;
-    border-radius: 999px;
-    background: linear-gradient(90deg, #fff, var(--lime) 20%, #dfff76ae);
-    box-shadow: 0 0 7px #0b081d;
+    width: 26px;
+    height: 26px;
+    border: 2px solid var(--lime);
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--lime) 1.5px, transparent 2.5px);
+    box-shadow: 0 0 0 1px #0d0a17, 0 0 12px #0d0a17a0;
     pointer-events: none;
 }
 
-.aim-beam.is-fired {
-    background: #fff;
-    box-shadow: 0 0 11px var(--lime);
+.hand-reticle.is-fired {
+    border-color: #fff;
+    background-color: #dfff7670;
 }
 
-.zone-switcher {
+.hand-reticle.is-locking::after {
     position: absolute;
-    bottom: 52px;
-    left: 50%;
-    display: flex;
-    gap: 6px;
-    transform: translateX(-50%);
+    inset: -5px;
+    border-radius: 50%;
+    background: conic-gradient(var(--lime) var(--aim-progress), #211832aa 0);
+    mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+    content: "";
 }
-
-.zone-switcher .button { padding-inline: clamp(7px, 2vw, 16px); }
 
 .hand-hint {
     position: absolute;

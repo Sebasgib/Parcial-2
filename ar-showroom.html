@@ -43,7 +43,7 @@
                 </a-scene>
             </div>
             <div class="effects" id="effects" aria-hidden="true"></div>
-            <div class="aim-beam" id="aim-beam" aria-hidden="true" hidden></div>
+            <div class="hand-reticle" id="hand-reticle" aria-hidden="true" hidden></div>
 
             <section class="menu" id="menu" aria-labelledby="title">
                 <div class="menu-art">
@@ -54,7 +54,7 @@
                     <h1 id="title">Patos <span>espaciales</span></h1>
                     <section class="rules" aria-labelledby="rules-title">
                         <h2 id="rules-title">Cómo jugar</h2>
-                        <p>Extiende el índice de cualquiera de las dos manos y guía la línea hasta un blanco. Avanza con la cámara trasera o cambia de zona para ver otros. Tienes <strong>30 segundos</strong>.</p>
+                        <p>Extiende el índice de cualquiera de las dos manos y mantén el círculo sobre un blanco para derribarlo. Gira el celular o avanza con la cámara trasera para buscar otros. Tienes <strong>30 segundos</strong>.</p>
                         <ul class="score-guide">
                             <li class="duck"><span>Pato</span><strong>+100</strong></li>
                             <li class="crystal"><span>Cristal</span><strong>+250</strong></li>
@@ -76,11 +76,6 @@
                 </dl>
                 <button class="button" id="quit" type="button">Menú</button>
             </section>
-            <nav class="zone-switcher" id="zone-switcher" aria-label="Zonas de búsqueda" hidden>
-                <button class="button" type="button" data-zone="left" aria-pressed="false">Izquierda</button>
-                <button class="button" type="button" data-zone="center" aria-pressed="true">Centro</button>
-                <button class="button" type="button" data-zone="right" aria-pressed="false">Derecha</button>
-            </nav>
             <p class="hand-hint" id="hand-hint" role="status" hidden></p>
 
             <section class="studio" id="studio" aria-labelledby="studio-title" hidden>

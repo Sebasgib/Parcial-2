@@ -27,7 +27,7 @@ function indexAim(landmarks, width, height) {
     const { x, y } = landmarks[8];
     const { x: jointX, y: jointY } = landmarks[6];
     const projectedLength = Math.hypot((x - jointX) * width, (y - jointY) * height);
-    return projectedLength >= 3 ? { x, y, jointX, jointY, projectedLength } : null;
+    return { x, y, projectedLength };
 }
 
 export function detectHand(detector, image, timestamp) {
@@ -47,9 +47,9 @@ export function detectHand(detector, image, timestamp) {
         activeHands.delete(detector);
         return null;
     }
-    const { x, y, jointX, jointY, side } = selected;
+    const { x, y, side } = selected;
     activeHands.set(detector, side);
-    return { x, y, jointX, jointY };
+    return { x, y };
 }
 
 function createWorkerDetector() {
