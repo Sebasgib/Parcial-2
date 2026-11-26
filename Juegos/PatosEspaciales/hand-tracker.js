@@ -2,6 +2,7 @@ const VISION_PACKAGE = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.1
 const HAND_MODEL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
 const MAX_FRAME_SIDE = 352;
 const FALLBACK_INTERVAL = 32;
+const activeHands = new WeakMap();
 
 export async function createDetector(canvas) {
     const { FilesetResolver, HandLandmarker } = await import(VISION_PACKAGE + '/vision_bundle.mjs');
@@ -10,36 +11,45 @@ export async function createDetector(canvas) {
         baseOptions: { modelAssetPath: HAND_MODEL, delegate: 'CPU' },
         canvas,
         runningMode: 'VIDEO',
-        numHands: 1
+        numHands: 2
     });
 }
 
-export function detectHand(detector, image, timestamp) {
-    const [landmarks] = detector.detectForVideo(image, timestamp).landmarks;
-    if (!landmarks) return null;
-
-    const { width, height } = image;
+function indexAim(landmarks, width, height) {
     const distance = (a, b) => Math.hypot(
         (landmarks[a].x - landmarks[b].x) * width,
         (landmarks[a].y - landmarks[b].y) * height,
         (landmarks[a].z - landmarks[b].z) * width
     );
+    const segments = [distance(5, 6), distance(6, 7), distance(7, 8)];
+    if (Math.min(...segments) < 1 || distance(5, 8) / (segments[0] + segments[1] + segments[2]) < 0.9) return null;
+
+    const { x, y } = landmarks[8];
+    const { x: jointX, y: jointY } = landmarks[6];
+    const projectedLength = Math.hypot((x - jointX) * width, (y - jointY) * height);
+    return projectedLength >= 3 ? { x, y, jointX, jointY, projectedLength } : null;
+}
+
+export function detectHand(detector, image, timestamp) {
+    const { landmarks: hands, handedness } = detector.detectForVideo(image, timestamp);
+    const previous = activeHands.get(detector);
     let selected = null;
-    let longest = 0;
-    for (const tip of [8, 12, 16, 20, 4]) {
-        const base = tip - 3;
-        const joint = landmarks[tip - 2];
-        const point = landmarks[tip];
-        const segments = [distance(base, base + 1), distance(base + 1, base + 2), distance(base + 2, tip)];
-        if (Math.min(...segments) < 1) continue;
-        const length = segments[0] + segments[1] + segments[2];
-        if (distance(base, tip) / length < 0.9) continue;
-        const projectedLength = Math.hypot((point.x - joint.x) * width, (point.y - joint.y) * height);
-        if (projectedLength <= longest) continue;
-        longest = projectedLength;
-        selected = { x: point.x, y: point.y, jointX: joint.x, jointY: joint.y };
+    for (const [index, landmarks] of hands.entries()) {
+        const aim = indexAim(landmarks, image.width, image.height);
+        if (!aim) continue;
+        const side = handedness?.[index]?.[0]?.categoryName;
+        if (!selected || aim.projectedLength > selected.projectedLength || (side && side === previous)) {
+            selected = { ...aim, side };
+        }
+        if (side && side === previous) break;
     }
-    return selected;
+    if (!selected) {
+        activeHands.delete(detector);
+        return null;
+    }
+    const { x, y, jointX, jointY, side } = selected;
+    activeHands.set(detector, side);
+    return { x, y, jointX, jointY };
 }
 
 function createWorkerDetector() {

@@ -413,7 +413,7 @@ function initializeArcade() {
         bestLabel.textContent = best;
         timeLabel.textContent = '30 s';
         timeLabel.classList.remove('is-low');
-        setHandHint('Muestra un dedo extendido para apuntar.');
+        setHandHint('Muestra el índice extendido para apuntar.');
         setScreen('game', 'quit');
     }
 
@@ -634,7 +634,7 @@ function initializeArcade() {
 
     function loseHand() {
         resetHandAim();
-        setHandHint('Muestra un dedo de lado y señala hacia un blanco.');
+        setHandHint('Muestra el índice de lado y señala hacia un blanco.');
     }
 
     function trackingFailed() {
@@ -683,7 +683,7 @@ function initializeArcade() {
         beam.style.transform = 'translate3d(' + x + 'px, ' + y + 'px, 0) rotate(' + Math.atan2(dy, dx) + 'rad)';
         beam.classList.toggle('is-fired', now - lastHitAt < SHOT_INTERVAL);
         beam.hidden = false;
-        setHandHint('Guía la línea con el dedo hasta tocar un blanco.');
+        setHandHint('Guía la línea con el índice hasta tocar un blanco.');
     }
 
     viewport.addEventListener('pointerup', (event) => {
