@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0d0a17">
-    <meta name="description" content="Atrapa patos espaciales, recoge cristales y prueba un pato 3D interactivo con tu cámara.">
+    <meta name="description" content="Apunta con la mano para atrapar patos espaciales y recoger cristales en realidad aumentada.">
     <title>Patos espaciales | Portafolio Multimedia</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="Juegos/PatosEspaciales/styles.css">
@@ -15,14 +15,24 @@
     <div class="arcade">
         <header class="topbar">
             <a class="top-link" href="index.html#videojuegos">Volver a videojuegos</a>
-            <button class="button camera-button" id="camera-toggle" type="button" aria-pressed="false">Activar cámara</button>
+            <div class="camera-controls">
+                <select class="button camera-orientation" id="camera-orientation" aria-label="Orientación de la cámara" hidden>
+                    <option value="auto">Orientación automática</option>
+                    <option value="normal">Sin espejo</option>
+                    <option value="mirror">Espejo</option>
+                    <option value="flip-vertical">Voltear verticalmente</option>
+                    <option value="rotate">Girar 180°</option>
+                </select>
+                <button class="button camera-button" id="camera-toggle" type="button" aria-pressed="false">Activar cámara</button>
+            </div>
         </header>
+        <p class="status" id="status" role="status">Cargando escena 3D…</p>
 
         <main class="stage" id="stage" data-screen="menu">
             <video class="camera-feed" id="camera-feed" autoplay muted playsinline aria-hidden="true"></video>
             <div class="space" aria-hidden="true"></div>
             <div class="viewport" id="viewport" aria-hidden="true">
-                <a-scene id="scene" embedded renderer="alpha: true; antialias: true; colorManagement: true"
+                <a-scene id="scene" embedded renderer="alpha: true; antialias: auto; maxCanvasWidth: 1440; maxCanvasHeight: 1080"
                     vr-mode-ui="enabled: false" xr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
                     <a-entity camera="active: true; fov: 58; near: 0.1; far: 60" position="0 0 0"></a-entity>
                     <a-entity light="type: ambient; color: #e5d5ff; intensity: 1.35"></a-entity>
@@ -33,6 +43,7 @@
                 </a-scene>
             </div>
             <div class="effects" id="effects" aria-hidden="true"></div>
+            <div class="hand-reticle" id="hand-reticle" aria-hidden="true" hidden></div>
 
             <section class="menu" id="menu" aria-labelledby="title">
                 <div class="menu-art">
@@ -43,7 +54,7 @@
                     <h1 id="title">Patos <span>espaciales</span></h1>
                     <section class="rules" aria-labelledby="rules-title">
                         <h2 id="rules-title">Cómo jugar</h2>
-                        <p>Toca o haz clic en los blancos que crucen la pantalla. Consigue la mayor puntuación en <strong>30 segundos</strong>.</p>
+                        <p>Mueve el celular o elige una zona para buscar blancos lejanos. Señala un blanco con el índice hasta llenar el círculo. Tienes <strong>30 segundos</strong> desde que se detecta tu mano.</p>
                         <ul class="score-guide">
                             <li class="duck"><span>Pato</span><strong>+100</strong></li>
                             <li class="crystal"><span>Cristal</span><strong>+250</strong></li>
@@ -65,6 +76,12 @@
                 </dl>
                 <button class="button" id="quit" type="button">Menú</button>
             </section>
+            <nav class="zone-switcher" id="zone-switcher" aria-label="Zonas de búsqueda" hidden>
+                <button class="button" type="button" data-zone="left" aria-pressed="false">Izquierda</button>
+                <button class="button" type="button" data-zone="center" aria-pressed="true">Centro</button>
+                <button class="button" type="button" data-zone="right" aria-pressed="false">Derecha</button>
+            </nav>
+            <p class="hand-hint" id="hand-hint" role="status" hidden></p>
 
             <section class="studio" id="studio" aria-labelledby="studio-title" hidden>
                 <header class="studio-header">
@@ -98,7 +115,6 @@
             </section>
         </main>
 
-        <p class="status" id="status" role="status">Cargando escena 3D…</p>
         <noscript><p class="status">Activa JavaScript para jugar y abrir el showroom.</p></noscript>
     </div>
 </body>

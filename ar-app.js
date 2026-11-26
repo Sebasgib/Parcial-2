@@ -1,12 +1,18 @@
 'use strict';
 
 const ROUND_TIME = 30_000;
-const DEPTH = 6;
+const SHOWROOM_DEPTH = 6;
+const TARGET_MIN_DEPTH = 22;
+const TARGET_MAX_DEPTH = 34;
+const INDEX_EXTENDED = 0.92;
+const AIM_TIME = 200;
 const BEST_KEY = 'space_ducks_best';
 const METRICS_KEY = 'ar_metrics';
 const DUCK_COLORS = ['#ffcb39', '#6ef5bf', '#f8a5ee', '#79caff'];
 const POINTS = { duck: 100, crystal: 250, bottle: -150 };
-const LANES = [-0.57, -0.24, 0.13, 0.51];
+const ZONE_YAW = { left: Math.PI / 3, center: 0, right: -Math.PI / 3 };
+const ZONES = ['center', 'left', 'right'];
+const TARGET_SLOTS = [[0, 0], [-0.16, 0.14], [0.17, 0.16], [-0.15, -0.17], [0.17, -0.15]];
 const $ = (id) => document.getElementById(id);
 
 const stage = $('stage');
@@ -14,6 +20,7 @@ const scene = $('scene');
 const viewport = $('viewport');
 const cameraButton = $('camera-toggle');
 const cameraFeed = $('camera-feed');
+const orientationControl = $('camera-orientation');
 const status = $('status');
 const screens = { menu: $('menu'), game: $('hud'), studio: $('studio'), results: $('results') };
 const modelColor = $('model-color');
@@ -22,31 +29,43 @@ const spinSpeed = $('spin-speed');
 
 let cameraStream = null;
 let cameraRequest = 0;
+let cameraOpening = null;
+let facingMode = '';
+let cameraOrientation = { x: 1, y: 1 };
 
-function stopCamera() {
+function updateCameraOrientation() {
+    const mode = orientationControl.value;
+    const mirror = mode === 'mirror' || (mode === 'auto' && facingMode === 'user');
+    const rotate = mode === 'rotate';
+    cameraOrientation = { x: mirror || rotate ? -1 : 1, y: rotate || mode === 'flip-vertical' ? -1 : 1 };
+    cameraFeed.style.setProperty('--camera-x', cameraOrientation.x);
+    cameraFeed.style.setProperty('--camera-y', cameraOrientation.y);
+    stage.dispatchEvent(new Event('camera-orientation-changed'));
+}
+
+function stopCamera(message = '') {
     cameraRequest += 1;
+    cameraOpening = null;
     if (cameraStream) cameraStream.getTracks().forEach((track) => track.stop());
     cameraStream = null;
     cameraFeed.srcObject = null;
     stage.classList.remove('has-camera');
+    orientationControl.hidden = true;
     cameraButton.textContent = 'Activar cámara';
     cameraButton.setAttribute('aria-pressed', 'false');
     cameraButton.disabled = false;
+    status.textContent = message;
+    stage.dispatchEvent(new Event('camera-stopped'));
 }
 
-cameraButton.addEventListener('click', async () => {
-    if (cameraStream) {
-        stopCamera();
-        status.textContent = 'Cámara desactivada.';
-        return;
-    }
+async function requestCamera() {
     if (!window.isSecureContext) {
-        status.textContent = 'Abre esta página por HTTPS para usar la cámara.';
-        return;
+        status.textContent = 'Abre el juego por HTTPS para permitir el uso de la cámara.';
+        return false;
     }
     if (!navigator.mediaDevices?.getUserMedia) {
-        status.textContent = 'La cámara no está disponible en este navegador. Puedes jugar con el fondo espacial.';
-        return;
+        status.textContent = 'La cámara no está disponible en este navegador.';
+        return false;
     }
 
     const request = ++cameraRequest;
@@ -54,39 +73,64 @@ cameraButton.addEventListener('click', async () => {
     status.textContent = 'Esperando permiso para usar la cámara…';
     try {
         const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: 'environment' } },
+            video: {
+                facingMode: { ideal: 'environment' },
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+                frameRate: { ideal: 30, max: 30 }
+            },
             audio: false
         });
         if (request !== cameraRequest) {
             stream.getTracks().forEach((track) => track.stop());
-            return;
+            return false;
         }
 
         cameraStream = stream;
         cameraFeed.srcObject = stream;
         await cameraFeed.play();
-        if (request !== cameraRequest) return;
+        if (request !== cameraRequest) return false;
 
-        stream.getVideoTracks()[0].addEventListener('ended', () => {
+        const track = stream.getVideoTracks()[0];
+        track.addEventListener('ended', () => {
             if (cameraStream !== stream) return;
-            stopCamera();
-            status.textContent = 'La cámara se desconectó. Puedes seguir con el fondo espacial.';
+            stopCamera('La cámara se desconectó. Vuelve a activarla para jugar.');
         }, { once: true });
+        facingMode = track.getSettings().facingMode;
+        updateCameraOrientation();
         stage.classList.add('has-camera');
+        orientationControl.hidden = false;
         cameraButton.textContent = 'Desactivar cámara';
         cameraButton.setAttribute('aria-pressed', 'true');
         cameraButton.disabled = false;
-        status.textContent = stage.dataset.screen === 'menu' ? 'Cámara activa. Elige Jugar o Showroom 3D.' : 'Cámara activa.';
+        status.textContent = '';
+        return true;
     } catch (error) {
-        if (request !== cameraRequest) return;
-        stopCamera();
-        status.textContent = error.name === 'NotAllowedError'
-            ? 'Permiso de cámara denegado. Puedes jugar con el fondo espacial.'
-            : 'No se pudo abrir la cámara. Puedes jugar con el fondo espacial.';
+        if (request !== cameraRequest) return false;
+        stopCamera(error.name === 'NotAllowedError'
+            ? 'Permite el acceso a la cámara en tu navegador para jugar con la mano.'
+            : 'No se pudo abrir la cámara. Comprueba que esté disponible y vuelve a intentarlo.');
+        return false;
     }
+}
+
+function openCamera() {
+    if (cameraOpening) return cameraOpening;
+    if (cameraStream) return Promise.resolve(true);
+    const pending = requestCamera().finally(() => {
+        if (cameraOpening === pending) cameraOpening = null;
+    });
+    cameraOpening = pending;
+    return pending;
+}
+
+cameraButton.addEventListener('click', () => {
+    if (cameraStream) stopCamera('Cámara desactivada.');
+    else openCamera();
 });
 
-window.addEventListener('pagehide', stopCamera);
+window.addEventListener('pagehide', () => stopCamera());
+orientationControl.addEventListener('change', updateCameraOrientation);
 
 function readBest() {
     try {
@@ -195,6 +239,12 @@ function initializeArcade() {
     const targetLayer = $('targets').object3D;
     const showroomRoot = $('showroom-object');
     const spinButton = $('spin');
+    const playButton = $('play');
+    const replayButton = $('replay');
+    const handHint = $('hand-hint');
+    const reticle = $('hand-reticle');
+    const zoneSwitcher = $('zone-switcher');
+    const zoneButtons = [...zoneSwitcher.querySelectorAll('button')];
     const panel = document.querySelector('.control-panel');
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
@@ -206,16 +256,34 @@ function initializeArcade() {
     const timeLabel = $('timer');
     const scoreLabel = $('score');
     const bestLabel = $('best');
+    const deviceEuler = new THREE.Euler(0, 0, 0, 'YXZ');
+    const deviceRotation = new THREE.Quaternion();
+    const motionReference = new THREE.Quaternion();
+    const relativeRotation = new THREE.Quaternion();
+    const screenRotation = new THREE.Quaternion();
+    const deviceToCamera = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
+    const screenAxis = new THREE.Vector3(0, 0, 1);
+    const forward = new THREE.Vector3();
     let best = readBest();
     let score = 0;
     let endTime = 0;
     let nextSpawn = 0;
-    let lastLane = -1;
+    let nextZone = 0;
     let spawnBag = [];
     let frameId = 0;
     let previousFrame = 0;
     let spinProgress = 1;
     let spinFrom = 0;
+    let screenRevision = 0;
+    let handTracker = null;
+    let lastHandFrameAt = -Infinity;
+    let lockedTarget = null;
+    let lockStarted = 0;
+    let lastHitAt = -Infinity;
+    let highlightedZone = 'center';
+    let yawOffset = 0;
+    let hasMotionReference = false;
+    let motionRequested = false;
     let view = { width: 1, height: 1, halfHeight: 1, halfWidth: 1, targetScale: 1 };
 
     function collider(parent, x, y, z) {
@@ -245,7 +313,7 @@ function initializeArcade() {
         showroomRoot.object3D.position.set(
             (availableWidth / view.width - 1) * view.halfWidth,
             (1 - (bottom + top) / view.height) * view.halfHeight,
-            -DEPTH
+            -SHOWROOM_DEPTH
         );
         showroom.scale.setScalar(scale * Number(modelSize.value) / 100);
     }
@@ -253,43 +321,121 @@ function initializeArcade() {
     function updateView() {
         const { width, height } = viewport.getBoundingClientRect();
         if (!width || !height) return;
-        const halfHeight = Math.tan(THREE.MathUtils.degToRad(scene.camera.fov / 2)) * DEPTH;
+        const resized = width !== view.width || height !== view.height;
+        const halfHeight = Math.tan(THREE.MathUtils.degToRad(scene.camera.fov / 2)) * SHOWROOM_DEPTH;
         view = {
             width, height, halfHeight, halfWidth: halfHeight * width / height,
             targetScale: THREE.MathUtils.clamp(Math.min(width, height) / 460, 0.7, 1.15)
         };
         if (stage.dataset.screen === 'studio') layoutShowroom();
+        else if (resized && stage.dataset.screen === 'game') loseHand();
+    }
+
+    function pointView(yaw, pitch = 0) {
+        scene.camera.rotation.set(pitch, yaw, 0, 'YXZ');
+        scene.camera.updateMatrixWorld(true);
+        const zone = ZONES.reduce((nearest, name) =>
+            Math.cos(yaw - ZONE_YAW[name]) > Math.cos(yaw - ZONE_YAW[nearest]) ? name : nearest);
+        if (zone === highlightedZone) return;
+        highlightedZone = zone;
+        for (const button of zoneButtons) button.setAttribute('aria-pressed', String(button.dataset.zone === zone));
+    }
+
+    function deviceMoved(event) {
+        if (stage.dataset.screen !== 'game' || facingMode === 'user') return;
+        const { alpha, beta, gamma } = event;
+        if (![alpha, beta, gamma].every(Number.isFinite)) return;
+
+        const radians = THREE.MathUtils.degToRad;
+        const screenAngle = window.screen.orientation?.angle ?? window.orientation ?? 0;
+        deviceEuler.set(radians(beta), radians(alpha), -radians(gamma));
+        deviceRotation.setFromEuler(deviceEuler).multiply(deviceToCamera);
+        deviceRotation.multiply(screenRotation.setFromAxisAngle(screenAxis, -radians(screenAngle)));
+        if (!hasMotionReference) {
+            motionReference.copy(deviceRotation).invert();
+            hasMotionReference = true;
+        }
+        relativeRotation.multiplyQuaternions(motionReference, deviceRotation);
+        forward.set(0, 0, -1).applyQuaternion(relativeRotation);
+        const yaw = Math.atan2(-forward.x, -forward.z) + yawOffset;
+        const pitch = Math.asin(THREE.MathUtils.clamp(forward.y, -0.43, 0.43));
+        pointView(yaw, pitch);
+    }
+
+    async function enableMotion() {
+        const sensors = window.DeviceOrientationEvent;
+        if (motionRequested || !sensors || !window.matchMedia('(any-pointer: coarse)').matches) return;
+        motionRequested = true;
+        try {
+            if (typeof sensors.requestPermission === 'function' && await sensors.requestPermission() !== 'granted') return;
+            window.addEventListener('deviceorientation', deviceMoved);
+        } catch {
+            // The zone buttons also work without motion sensors.
+        }
     }
 
     function setScreen(screen, focusId) {
+        screenRevision += 1;
+        handTracker?.stop();
         cancelAnimationFrame(frameId);
         frameId = 0;
         previousFrame = 0;
         for (const { model } of targets.values()) model.removeFromParent();
         targets.clear();
         effects.replaceChildren();
+        resetHandAim();
+        pointView(0);
 
         stage.dataset.screen = screen;
         for (const [name, panel] of Object.entries(screens)) panel.hidden = name !== screen;
+        handHint.hidden = screen !== 'game';
+        zoneSwitcher.hidden = screen !== 'game';
         showroomRoot.setAttribute('visible', screen === 'studio');
         updateView();
 
+        if (screen === 'game') handTracker.start();
         if (screen === 'game' || screen === 'studio') frameId = requestAnimationFrame(update);
         $(focusId).focus({ preventScroll: true });
     }
 
     function startGame() {
-        const now = performance.now();
         score = 0;
-        endTime = now + ROUND_TIME;
-        nextSpawn = now;
-        spawnBag = ['duck'];
-        lastLane = -1;
+        endTime = 0;
+        spawnBag = Math.random() < 0.5 ? ['bottle', 'crystal', 'duck'] : ['crystal', 'bottle', 'duck'];
+        nextZone = 0;
+        yawOffset = 0;
+        hasMotionReference = false;
         scoreLabel.textContent = '0';
         bestLabel.textContent = best;
         timeLabel.textContent = '30 s';
         timeLabel.classList.remove('is-low');
+        setHandHint('Muestra tu mano con el índice extendido.');
         setScreen('game', 'quit');
+    }
+
+    async function prepareGame() {
+        if (playButton.disabled) return;
+        const request = screenRevision;
+        playButton.disabled = replayButton.disabled = true;
+        const camera = openCamera();
+        void enableMotion();
+        try {
+            if (!(await camera) || request !== screenRevision) return;
+            if (!handTracker) {
+                status.textContent = 'Cargando el reconocimiento de manos…';
+                const { createHandTracker } = await import('./Juegos/PatosEspaciales/hand-tracker.js');
+                handTracker = await createHandTracker(cameraFeed, updateHandAim, trackingFailed);
+            }
+            if (request !== screenRevision || !cameraStream) return;
+            status.textContent = '';
+            startGame();
+        } catch {
+            if (request === screenRevision && cameraStream) {
+                status.textContent = 'No se pudo cargar el reconocimiento de manos. Comprueba tu conexión y vuelve a intentar.';
+            }
+        } finally {
+            playButton.disabled = replayButton.disabled = false;
+        }
     }
 
     function finishGame() {
@@ -313,35 +459,41 @@ function initializeArcade() {
         return spawnBag.pop();
     }
 
-    function spawnTarget(now) {
+    function spawnTarget(zone, now) {
+        const occupied = [...targets.values()].filter((target) => target.zone === zone).map((target) => target.slot);
+        if (occupied.length >= 3) return;
+        const freeSlots = TARGET_SLOTS.map((_, index) => index).filter((index) => !occupied.includes(index));
+        const slot = freeSlots[Math.floor(Math.random() * freeSlots.length)];
+        const [heading, elevation] = TARGET_SLOTS[slot];
+        const yaw = ZONE_YAW[zone] + heading;
+        const depth = THREE.MathUtils.lerp(TARGET_MIN_DEPTH, TARGET_MAX_DEPTH, Math.random());
+        const groundDistance = depth * Math.cos(elevation);
+        const height = depth * Math.sin(elevation);
         const type = nextTargetType();
         const model = templates[type].clone();
-        const hitbox = type === 'duck' ? collider(model, 0.91, 0.82, 0.69) : collider(model, 0.52, 0.68, 0.53);
-        const lane = (lastLane + 1 + Math.floor(Math.random() * (LANES.length - 1))) % LANES.length;
-        lastLane = lane;
+        const hitbox = type === 'duck' ? collider(model, 1.21, 1.04, 0.78) : collider(model, 0.75, 0.88, 0.62);
+        model.position.set(-Math.sin(yaw) * groundDistance, height, -Math.cos(yaw) * groundDistance);
+        model.rotation.y = yaw;
         targets.set(hitbox, {
-            model, type, lane, born: now,
-            flight: 3250 + Math.random() * 1350,
-            direction: Math.random() < 0.5 ? 1 : -1
+            model, type, zone, slot, yaw, height, born: now,
+            life: 10_000 + Math.random() * 3800
         });
         targetLayer.add(model);
     }
 
     function moveTargets(now) {
         for (const [hitbox, target] of targets) {
-            const flight = (now - target.born) / target.flight;
-            const { model, direction, lane, type } = target;
-            if (flight >= 1) {
+            const age = now - target.born;
+            const { model, type, height, yaw } = target;
+            if (age >= target.life) {
                 model.removeFromParent();
                 targets.delete(hitbox);
                 continue;
             }
-            const sway = Math.sin(flight * Math.PI * 3 + lane);
-            const travel = view.halfWidth + view.targetScale * 0.94;
-            model.position.set((flight * 2 - 1) * direction * travel, (LANES[lane] + sway * 0.04) * view.halfHeight, -DEPTH);
-            model.scale.setScalar(view.targetScale);
-            model.rotation.y = type === 'duck' ? direction * 0.41 + sway * 0.13 : flight * Math.PI * 2;
-            model.rotation.z = sway * 0.13;
+            const sway = reducedMotion.matches ? 0 : Math.sin(age / 510);
+            model.position.y = height + sway * 0.26;
+            model.rotation.y = yaw + sway * 0.23;
+            model.scale.setScalar(view.targetScale * (type === 'duck' ? 1 : 1.32));
         }
     }
 
@@ -350,19 +502,23 @@ function initializeArcade() {
         const elapsed = previousFrame ? Math.min(now - previousFrame, 50) : 0;
         previousFrame = now;
         if (stage.dataset.screen === 'game') {
-            const seconds = Math.max(0, Math.ceil((endTime - now) / 1000));
-            const timeText = seconds + ' s';
-            if (timeLabel.textContent !== timeText) timeLabel.textContent = timeText;
-            timeLabel.classList.toggle('is-low', seconds <= 5);
-            if (now >= endTime) {
-                finishGame();
-                return;
+            if (endTime) {
+                const seconds = Math.max(0, Math.ceil((endTime - now) / 1000));
+                const timeText = seconds + ' s';
+                if (timeLabel.textContent !== timeText) timeLabel.textContent = timeText;
+                timeLabel.classList.toggle('is-low', seconds <= 5);
+                if (now >= endTime) {
+                    finishGame();
+                    return;
+                }
+                moveTargets(now);
+                if (now >= nextSpawn) {
+                    spawnTarget(ZONES[nextZone], now);
+                    nextZone = (nextZone + 1) % ZONES.length;
+                    nextSpawn = now + 1450;
+                }
             }
-            if (now >= nextSpawn) {
-                spawnTarget(now);
-                nextSpawn = now + 820;
-            }
-            moveTargets(now);
+            if (!reticle.hidden && now - lastHandFrameAt > 300) loseHand();
         } else if (spinProgress < 1) {
             spinProgress = Math.min(1, spinProgress + elapsed * Number(spinSpeed.value) / 800);
             const eased = 1 - Math.pow(1 - spinProgress, 3);
@@ -398,31 +554,112 @@ function initializeArcade() {
         effects.append(hit);
     }
 
-    viewport.addEventListener('pointerup', (event) => {
-        const screen = stage.dataset.screen;
-        if (!event.isPrimary || event.button !== 0 || (screen !== 'game' && screen !== 'studio')) return;
-        const bounds = viewport.getBoundingClientRect();
-        const x = event.clientX - bounds.left;
-        const y = event.clientY - bounds.top;
-        pointer.set(x / bounds.width * 2 - 1, 1 - y / bounds.height * 2);
+    function aimRay(x, y) {
+        pointer.set(x / view.width * 2 - 1, 1 - y / view.height * 2);
         raycaster.setFromCamera(pointer, scene.camera);
+    }
 
-        if (screen === 'studio') {
-            showroomCollider.updateWorldMatrix(true, false);
-            if (raycaster.intersectObject(showroomCollider, false).length) activateModel();
-            return;
-        }
-        if (performance.now() >= endTime) return;
+    function targetAt(x, y) {
+        aimRay(x, y);
         for (const hitbox of targets.keys()) hitbox.updateWorldMatrix(true, false);
         const [hit] = raycaster.intersectObjects([...targets.keys()], false);
-        if (!hit) return;
-        const target = targets.get(hit.object);
+        return hit?.object ?? null;
+    }
+
+    function hitTarget(hitbox, x, y) {
+        const target = targets.get(hitbox);
         const points = POINTS[target.type];
         score += points;
         scoreLabel.textContent = score;
-        targets.delete(hit.object);
+        targets.delete(hitbox);
         target.model.removeFromParent();
         showHit(x, y, target.type, points);
+    }
+
+    function setHandHint(message) {
+        if (handHint.textContent !== message) handHint.textContent = message;
+    }
+
+    function clearAimLock() {
+        lockedTarget = null;
+        reticle.classList.remove('is-locking');
+    }
+
+    function resetHandAim() {
+        lastHandFrameAt = -Infinity;
+        lastHitAt = -Infinity;
+        clearAimLock();
+        reticle.hidden = true;
+        reticle.classList.remove('is-fired');
+    }
+
+    function loseHand() {
+        resetHandAim();
+        setHandHint(endTime ? 'Vuelve a mostrar el índice extendido.' : 'Muestra tu mano con el índice extendido.');
+    }
+
+    function trackingFailed() {
+        handTracker.close();
+        handTracker = null;
+        setScreen('menu', 'play');
+        status.textContent = 'Se interrumpió el reconocimiento de manos. Pulsa Jugar para volver a intentarlo.';
+    }
+
+    function updateHandAim(sample, videoWidth, videoHeight) {
+        if (!sample || sample.extension < INDEX_EXTENDED) {
+            loseHand();
+            return;
+        }
+
+        const fit = Math.max(view.width / videoWidth, view.height / videoHeight);
+        // Match the camera crop and reflect the aim when the video is reflected.
+        const x = view.width / 2 + (sample.x - 0.5) * videoWidth * fit * cameraOrientation.x;
+        const y = view.height / 2 + (sample.y - 0.5) * videoHeight * fit * cameraOrientation.y;
+        if (x < 0 || x > view.width || y < 0 || y > view.height) {
+            loseHand();
+            return;
+        }
+
+        const now = performance.now();
+        if (!endTime) {
+            endTime = now + ROUND_TIME;
+            for (const zone of ZONES) spawnTarget(zone, now);
+            nextSpawn = now + 1450;
+        }
+        lastHandFrameAt = now;
+        reticle.style.transform = 'translate3d(' + x + 'px, ' + y + 'px, 0) translate(-50%, -50%)';
+        reticle.classList.toggle('is-fired', now - lastHitAt < AIM_TIME);
+        reticle.hidden = false;
+        setHandHint('Señala un blanco hasta llenar el círculo.');
+        if (now >= endTime) return;
+
+        const target = targetAt(x, y);
+        if (!target) {
+            clearAimLock();
+            return;
+        }
+        if (lockedTarget !== target) {
+            lockedTarget = target;
+            lockStarted = now;
+        }
+        const progress = (now - lockStarted) / AIM_TIME;
+        if (progress < 1) {
+            reticle.style.setProperty('--aim-progress', progress * 360 + 'deg');
+            reticle.classList.add('is-locking');
+            return;
+        }
+        hitTarget(target, x, y);
+        clearAimLock();
+        lastHitAt = now;
+        reticle.classList.add('is-fired');
+    }
+
+    viewport.addEventListener('pointerup', (event) => {
+        if (stage.dataset.screen !== 'studio' || !event.isPrimary || event.button !== 0) return;
+        const bounds = viewport.getBoundingClientRect();
+        aimRay(event.clientX - bounds.left, event.clientY - bounds.top);
+        showroomCollider.updateWorldMatrix(true, false);
+        if (raycaster.intersectObject(showroomCollider, false).length) activateModel();
     });
 
     spinButton.addEventListener('click', spinModel);
@@ -435,17 +672,31 @@ function initializeArcade() {
         $('spin-speed-value').value = Number(spinSpeed.value).toLocaleString('es') + '×';
     });
 
-    $('play').addEventListener('click', startGame);
-    $('replay').addEventListener('click', startGame);
+    playButton.addEventListener('click', prepareGame);
+    replayButton.addEventListener('click', prepareGame);
+    stage.addEventListener('camera-stopped', () => {
+        if (stage.dataset.screen === 'game') setScreen('menu', 'play');
+    });
+    stage.addEventListener('camera-orientation-changed', () => {
+        if (stage.dataset.screen === 'game') loseHand();
+    });
     $('showroom').addEventListener('click', () => setScreen('studio', 'studio-back'));
     $('quit').addEventListener('click', () => setScreen('menu', 'play'));
     $('studio-back').addEventListener('click', () => setScreen('menu', 'showroom'));
     $('result-back').addEventListener('click', () => setScreen('menu', 'play'));
+    for (const button of zoneButtons) {
+        button.addEventListener('click', () => {
+            yawOffset = ZONE_YAW[button.dataset.zone];
+            if (hasMotionReference) motionReference.copy(deviceRotation).invert();
+            pointView(yawOffset);
+            clearAimLock();
+        });
+    }
     new ResizeObserver(updateView).observe(viewport);
     new ResizeObserver(() => {
         if (stage.dataset.screen === 'studio') layoutShowroom();
     }).observe(panel);
-    $('play').disabled = false;
+    playButton.disabled = false;
     $('showroom').disabled = false;
     if (status.textContent === 'Cargando escena 3D…') status.textContent = '';
 }
