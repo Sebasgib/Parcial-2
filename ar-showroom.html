@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.2.0/dist/aframeextras.min.js"></script>
+</head>
+<body>
+    <a-scene>
+ <a-box id="objeto-producto"
+ position="0 1.2 -3"
+ rotation="0 45 0"
+ color="#FF2A2A"
+material="roughness: 0.3;
+metalness: 0.6"
+class="clickable"
+animation="property: rotation; to: 0 405 0; loop: true; dur: 10000">
+</a-box>
+<a-camera position="0 1.6 0"> <a-cursor
+id="cursor-raycast" color="#FFCC00"
+fuse="false" raycaster="objects: .clickable">
+</a-cursor> </a-camera>
+ </a-scene>
+    <script src="js/ar-app.js"></script>
+</body>
+</html>
