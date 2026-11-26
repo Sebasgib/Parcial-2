@@ -1,28 +1,105 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.2.0/dist/aframeextras.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d0a17">
+    <meta name="description" content="Atrapa patos espaciales, recoge cristales y prueba un pato 3D interactivo con tu cámara.">
+    <title>Patos espaciales | Portafolio Multimedia</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="Juegos/PatosEspaciales/styles.css">
+    <script defer src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+    <script defer src="ar-app.js"></script>
 </head>
 <body>
-    <a-scene>
- <a-box id="objeto-producto"
- position="0 1.2 -3"
- rotation="0 45 0"
- color="#FF2A2A"
-material="roughness: 0.3;
-metalness: 0.6"
-class="clickable"
-animation="property: rotation; to: 0 405 0; loop: true; dur: 10000">
-</a-box>
-<a-camera position="0 1.6 0"> <a-cursor
-id="cursor-raycast" color="#FFCC00"
-fuse="false" raycaster="objects: .clickable">
-</a-cursor> </a-camera>
- </a-scene>
-    <script src="js/ar-app.js"></script>
+    <div class="arcade">
+        <header class="topbar">
+            <a class="top-link" href="index.html#videojuegos">Volver a videojuegos</a>
+            <button class="button camera-button" id="camera-toggle" type="button" aria-pressed="false">Activar cámara</button>
+        </header>
+
+        <main class="stage" id="stage" data-screen="menu">
+            <video class="camera-feed" id="camera-feed" autoplay muted playsinline aria-hidden="true"></video>
+            <div class="space" aria-hidden="true"></div>
+            <div class="viewport" id="viewport" aria-hidden="true">
+                <a-scene id="scene" embedded renderer="alpha: true; antialias: true; colorManagement: true"
+                    vr-mode-ui="enabled: false" xr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+                    <a-entity camera="active: true; fov: 58; near: 0.1; far: 60" position="0 0 0"></a-entity>
+                    <a-entity light="type: ambient; color: #e5d5ff; intensity: 1.35"></a-entity>
+                    <a-entity light="type: directional; color: #fff0d8; intensity: 2.25" position="-3 5 2"></a-entity>
+                    <a-entity light="type: directional; color: #a28cff; intensity: 1.4" position="3 1 -4"></a-entity>
+                    <a-entity id="targets"></a-entity>
+                    <a-entity id="showroom-object" visible="false"></a-entity>
+                </a-scene>
+            </div>
+            <div class="effects" id="effects" aria-hidden="true"></div>
+
+            <section class="menu" id="menu" aria-labelledby="title">
+                <div class="menu-art">
+                    <img src="Juegos/PatosEspaciales/portada.jpg" width="1440" height="810" alt="">
+                </div>
+                <div class="menu-content">
+                    <p class="eyebrow">Arcade en realidad aumentada</p>
+                    <h1 id="title">Patos <span>espaciales</span></h1>
+                    <section class="rules" aria-labelledby="rules-title">
+                        <h2 id="rules-title">Cómo jugar</h2>
+                        <p>Toca o haz clic en los blancos que crucen la pantalla. Consigue la mayor puntuación en <strong>30 segundos</strong>.</p>
+                        <ul class="score-guide">
+                            <li class="duck"><span>Pato</span><strong>+100</strong></li>
+                            <li class="crystal"><span>Cristal</span><strong>+250</strong></li>
+                            <li class="bottle"><span>Botella</span><strong>−150</strong></li>
+                        </ul>
+                    </section>
+                    <div class="actions">
+                        <button class="button button-primary" id="play" type="button" disabled>Jugar</button>
+                        <button class="button" id="showroom" type="button" disabled>Showroom 3D</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="hud" id="hud" aria-label="Marcador de la partida" hidden>
+                <dl class="stats">
+                    <div><dt>Puntos</dt><dd id="score">0</dd></div>
+                    <div><dt>Tiempo</dt><dd id="timer">30 s</dd></div>
+                    <div><dt>Récord</dt><dd id="best">0</dd></div>
+                </dl>
+                <button class="button" id="quit" type="button">Menú</button>
+            </section>
+
+            <section class="studio" id="studio" aria-labelledby="studio-title" hidden>
+                <header class="studio-header">
+                    <h2 id="studio-title">Showroom 3D</h2>
+                    <button class="button" id="studio-back" type="button">Menú</button>
+                </header>
+                <div class="control-panel" role="group" aria-label="Controles del pato 3D">
+                    <h3>Personaliza tu pato</h3>
+                    <p>Toca el pato para cambiar su color y hacerlo girar.</p>
+                    <label class="color-control" for="model-color">Color <input id="model-color" type="color" value="#ffcb39"></label>
+                    <label class="range-control" for="model-size">Tamaño <output id="model-size-value" for="model-size">100 %</output></label>
+                    <input id="model-size" type="range" min="75" max="125" value="100">
+                    <label class="range-control" for="spin-speed">Velocidad de giro <output id="spin-speed-value" for="spin-speed">1×</output></label>
+                    <input id="spin-speed" type="range" min="0.5" max="2.5" step="0.25" value="1">
+                    <button class="button" id="spin" type="button">Girar pato</button>
+                </div>
+            </section>
+
+            <section class="results" id="results" aria-labelledby="results-title" hidden>
+                <div class="result-panel">
+                    <h2 id="results-title" tabindex="-1">Tiempo agotado</h2>
+                    <dl class="stats">
+                        <div><dt>Puntuación final</dt><dd id="final-score">0</dd></div>
+                        <div><dt>Récord</dt><dd id="final-best">0</dd></div>
+                    </dl>
+                    <div class="actions">
+                        <button class="button button-primary" id="replay" type="button">Volver a jugar</button>
+                        <button class="button" id="result-back" type="button">Menú</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <p class="status" id="status" role="status">Cargando escena 3D…</p>
+        <noscript><p class="status">Activa JavaScript para jugar y abrir el showroom.</p></noscript>
+    </div>
 </body>
 </html>
