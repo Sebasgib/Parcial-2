@@ -24,10 +24,22 @@ export function detectHand(detector, image, timestamp) {
         (landmarks[a].y - landmarks[b].y) * height,
         (landmarks[a].z - landmarks[b].z) * width
     );
-    // A straight index finger spans nearly the full length of its three segments.
-    const indexLength = distance(5, 6) + distance(6, 7) + distance(7, 8);
-    if (indexLength <= 1) return null;
-    return { x: landmarks[8].x, y: landmarks[8].y, extension: distance(5, 8) / indexLength };
+    let selected = null;
+    let longest = 0;
+    for (const tip of [8, 12, 16, 20, 4]) {
+        const base = tip - 3;
+        const joint = landmarks[tip - 2];
+        const point = landmarks[tip];
+        const segments = [distance(base, base + 1), distance(base + 1, base + 2), distance(base + 2, tip)];
+        if (Math.min(...segments) < 1) continue;
+        const length = segments[0] + segments[1] + segments[2];
+        if (distance(base, tip) / length < 0.9) continue;
+        const projectedLength = Math.hypot((point.x - joint.x) * width, (point.y - joint.y) * height);
+        if (projectedLength <= longest) continue;
+        longest = projectedLength;
+        selected = { x: point.x, y: point.y, jointX: joint.x, jointY: joint.y };
+    }
+    return selected;
 }
 
 function createWorkerDetector() {

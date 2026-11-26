@@ -1,18 +1,19 @@
 'use strict';
 
 const ROUND_TIME = 30_000;
-const SHOWROOM_DEPTH = 6;
+const SHOWROOM_DEPTH = 3;
 const TARGET_MIN_DEPTH = 22;
 const TARGET_MAX_DEPTH = 34;
-const INDEX_EXTENDED = 0.92;
-const AIM_TIME = 200;
+const TARGET_SIZES = [0.72, 1, 1.34];
+const SHOT_INTERVAL = 180;
+const BEAM_CLEARANCE = 12;
 const BEST_KEY = 'space_ducks_best';
 const METRICS_KEY = 'ar_metrics';
 const DUCK_COLORS = ['#ffcb39', '#6ef5bf', '#f8a5ee', '#79caff'];
 const POINTS = { duck: 100, crystal: 250, bottle: -150 };
 const ZONE_YAW = { left: Math.PI / 3, center: 0, right: -Math.PI / 3 };
 const ZONES = ['center', 'left', 'right'];
-const TARGET_SLOTS = [[0, 0], [-0.16, 0.14], [0.17, 0.16], [-0.15, -0.17], [0.17, -0.15]];
+const TARGET_SLOTS = [[0.5, 0.45], [0.26, 0.2], [0.74, 0.2], [0.31, 0.82], [0.69, 0.82]];
 const $ = (id) => document.getElementById(id);
 
 const stage = $('stage');
@@ -242,7 +243,8 @@ function initializeArcade() {
     const playButton = $('play');
     const replayButton = $('replay');
     const handHint = $('hand-hint');
-    const reticle = $('hand-reticle');
+    const beam = $('aim-beam');
+    const projectedTarget = new THREE.Vector3();
     const zoneSwitcher = $('zone-switcher');
     const zoneButtons = [...zoneSwitcher.querySelectorAll('button')];
     const panel = document.querySelector('.control-panel');
@@ -268,7 +270,6 @@ function initializeArcade() {
     let score = 0;
     let endTime = 0;
     let nextSpawn = 0;
-    let nextZone = 0;
     let spawnBag = [];
     let frameId = 0;
     let previousFrame = 0;
@@ -276,9 +277,8 @@ function initializeArcade() {
     let spinFrom = 0;
     let screenRevision = 0;
     let handTracker = null;
+    let advanceDetector = null;
     let lastHandFrameAt = -Infinity;
-    let lockedTarget = null;
-    let lockStarted = 0;
     let lastHitAt = -Infinity;
     let highlightedZone = 'center';
     let yawOffset = 0;
@@ -319,16 +319,20 @@ function initializeArcade() {
     }
 
     function updateView() {
-        const { width, height } = viewport.getBoundingClientRect();
+        const { width, height, top } = viewport.getBoundingClientRect();
         if (!width || !height) return;
+        const playing = stage.dataset.screen === 'game';
         const resized = width !== view.width || height !== view.height;
         const halfHeight = Math.tan(THREE.MathUtils.degToRad(scene.camera.fov / 2)) * SHOWROOM_DEPTH;
+        const fieldTop = playing ? Math.max(height * 0.23, screens.game.getBoundingClientRect().bottom - top + 16) : 0;
+        const fieldBottom = playing ? Math.min(height * 0.64, zoneSwitcher.getBoundingClientRect().top - top - 16) : height;
         view = {
             width, height, halfHeight, halfWidth: halfHeight * width / height,
+            fieldTop, fieldBottom,
             targetScale: THREE.MathUtils.clamp(Math.min(width, height) / 460, 0.7, 1.15)
         };
         if (stage.dataset.screen === 'studio') layoutShowroom();
-        else if (resized && stage.dataset.screen === 'game') loseHand();
+        else if (resized && playing) loseHand();
     }
 
     function pointView(yaw, pitch = 0) {
@@ -377,6 +381,7 @@ function initializeArcade() {
     function setScreen(screen, focusId) {
         screenRevision += 1;
         handTracker?.stop();
+        advanceDetector?.reset();
         cancelAnimationFrame(frameId);
         frameId = 0;
         previousFrame = 0;
@@ -402,14 +407,13 @@ function initializeArcade() {
         score = 0;
         endTime = 0;
         spawnBag = Math.random() < 0.5 ? ['bottle', 'crystal', 'duck'] : ['crystal', 'bottle', 'duck'];
-        nextZone = 0;
         yawOffset = 0;
         hasMotionReference = false;
         scoreLabel.textContent = '0';
         bestLabel.textContent = best;
         timeLabel.textContent = '30 s';
         timeLabel.classList.remove('is-low');
-        setHandHint('Muestra tu mano con el índice extendido.');
+        setHandHint('Muestra un dedo extendido para apuntar.');
         setScreen('game', 'quit');
     }
 
@@ -423,8 +427,12 @@ function initializeArcade() {
             if (!(await camera) || request !== screenRevision) return;
             if (!handTracker) {
                 status.textContent = 'Cargando el reconocimiento de manos…';
-                const { createHandTracker } = await import('./Juegos/PatosEspaciales/hand-tracker.js');
+                const [{ createHandTracker }, { createAdvanceDetector }] = await Promise.all([
+                    import('./Juegos/PatosEspaciales/hand-tracker.js'),
+                    import('./Juegos/PatosEspaciales/scene-motion.js')
+                ]);
                 handTracker = await createHandTracker(cameraFeed, updateHandAim, trackingFailed);
+                advanceDetector = createAdvanceDetector(cameraFeed);
             }
             if (request !== screenRevision || !cameraStream) return;
             status.textContent = '';
@@ -459,32 +467,46 @@ function initializeArcade() {
         return spawnBag.pop();
     }
 
-    function spawnTarget(zone, now) {
-        const occupied = [...targets.values()].filter((target) => target.zone === zone).map((target) => target.slot);
+    function spawnTarget(now) {
+        const camera = scene.camera.rotation;
+        const occupied = [...targets.values()]
+            .filter((target) => Math.cos(target.viewYaw - camera.y) > 0.96 && Math.abs(target.viewPitch - camera.x) < 0.24);
         if (occupied.length >= 3) return;
-        const freeSlots = TARGET_SLOTS.map((_, index) => index).filter((index) => !occupied.includes(index));
+        const freeSlots = TARGET_SLOTS.map((_, index) => index).filter((index) => !occupied.some((target) => target.slot === index));
         const slot = freeSlots[Math.floor(Math.random() * freeSlots.length)];
-        const [heading, elevation] = TARGET_SLOTS[slot];
-        const yaw = ZONE_YAW[zone] + heading;
+        const availableSizes = TARGET_SIZES.filter((size) => !occupied.some((target) => target.size === size));
+        const size = availableSizes[Math.floor(Math.random() * availableSizes.length)];
+        const [x, y] = TARGET_SLOTS[slot];
+        // Use the current viewport to keep new targets inside the comfortable aiming area.
+        aimRay(x * view.width, THREE.MathUtils.lerp(view.fieldTop, view.fieldBottom, y));
+        const { direction } = raycaster.ray;
+        const yaw = Math.atan2(-direction.x, -direction.z);
         const depth = THREE.MathUtils.lerp(TARGET_MIN_DEPTH, TARGET_MAX_DEPTH, Math.random());
-        const groundDistance = depth * Math.cos(elevation);
-        const height = depth * Math.sin(elevation);
         const type = nextTargetType();
+        const scale = size * (type === 'duck' ? 1 : 1.32);
         const model = templates[type].clone();
         const hitbox = type === 'duck' ? collider(model, 1.21, 1.04, 0.78) : collider(model, 0.75, 0.88, 0.62);
-        model.position.set(-Math.sin(yaw) * groundDistance, height, -Math.cos(yaw) * groundDistance);
+        raycaster.ray.at(depth, model.position);
         model.rotation.y = yaw;
+        model.scale.setScalar(view.targetScale * scale);
         targets.set(hitbox, {
-            model, type, zone, slot, yaw, height, born: now,
+            model, type, slot, size, scale, yaw, height: model.position.y, born: now, viewYaw: camera.y, viewPitch: camera.x,
             life: 10_000 + Math.random() * 3800
         });
         targetLayer.add(model);
     }
 
+    function refreshTargets(now) {
+        for (const { model } of targets.values()) model.removeFromParent();
+        targets.clear();
+        for (let i = 0; i < 3; i += 1) spawnTarget(now);
+        nextSpawn = now + 1450;
+    }
+
     function moveTargets(now) {
         for (const [hitbox, target] of targets) {
             const age = now - target.born;
-            const { model, type, height, yaw } = target;
+            const { model, scale, height, yaw } = target;
             if (age >= target.life) {
                 model.removeFromParent();
                 targets.delete(hitbox);
@@ -493,7 +515,7 @@ function initializeArcade() {
             const sway = reducedMotion.matches ? 0 : Math.sin(age / 510);
             model.position.y = height + sway * 0.26;
             model.rotation.y = yaw + sway * 0.23;
-            model.scale.setScalar(view.targetScale * (type === 'duck' ? 1 : 1.32));
+            model.scale.setScalar(view.targetScale * scale);
         }
     }
 
@@ -511,14 +533,14 @@ function initializeArcade() {
                     finishGame();
                     return;
                 }
+                if (facingMode !== 'user' && advanceDetector?.advanced(now)) refreshTargets(now);
                 moveTargets(now);
                 if (now >= nextSpawn) {
-                    spawnTarget(ZONES[nextZone], now);
-                    nextZone = (nextZone + 1) % ZONES.length;
+                    spawnTarget(now);
                     nextSpawn = now + 1450;
                 }
             }
-            if (!reticle.hidden && now - lastHandFrameAt > 300) loseHand();
+            if (!beam.hidden && now - lastHandFrameAt > 300) loseHand();
         } else if (spinProgress < 1) {
             spinProgress = Math.min(1, spinProgress + elapsed * Number(spinSpeed.value) / 800);
             const eased = 1 - Math.pow(1 - spinProgress, 3);
@@ -559,11 +581,34 @@ function initializeArcade() {
         raycaster.setFromCamera(pointer, scene.camera);
     }
 
-    function targetAt(x, y) {
-        aimRay(x, y);
-        for (const hitbox of targets.keys()) hitbox.updateWorldMatrix(true, false);
-        const [hit] = raycaster.intersectObjects([...targets.keys()], false);
-        return hit?.object ?? null;
+    function beamContact(x, y, dx, dy, reach) {
+        const camera = scene.camera;
+        let hitbox = null;
+        for (const [candidate, { model }] of targets) {
+            candidate.getWorldPosition(projectedTarget).applyMatrix4(camera.matrixWorldInverse);
+            const depth = -projectedTarget.z;
+            if (depth <= camera.near || depth >= camera.far) continue;
+            const pixelsPerUnit = view.height * camera.projectionMatrix.elements[5] * model.scale.x / (2 * depth);
+            projectedTarget.applyMatrix4(camera.projectionMatrix);
+            const rx = candidate.scale.x * pixelsPerUnit;
+            const ry = candidate.scale.y * pixelsPerUnit;
+            const offsetX = (x - (projectedTarget.x + 1) * view.width / 2) / rx;
+            const offsetY = (y - (1 - projectedTarget.y) * view.height / 2) / ry;
+            const vx = dx / rx;
+            const vy = dy / ry;
+            // Intersect the visible beam with the target's projected hit area.
+            const a = vx * vx + vy * vy;
+            const b = offsetX * vx + offsetY * vy;
+            const c = offsetX * offsetX + offsetY * offsetY - 1;
+            const discriminant = b * b - a * c;
+            if (discriminant < 0) continue;
+            const contact = (-b - Math.sqrt(discriminant)) / a;
+            if (contact >= BEAM_CLEARANCE && contact < reach) {
+                reach = contact;
+                hitbox = candidate;
+            }
+        }
+        return { hitbox, reach };
     }
 
     function hitTarget(hitbox, x, y) {
@@ -580,22 +625,16 @@ function initializeArcade() {
         if (handHint.textContent !== message) handHint.textContent = message;
     }
 
-    function clearAimLock() {
-        lockedTarget = null;
-        reticle.classList.remove('is-locking');
-    }
-
     function resetHandAim() {
         lastHandFrameAt = -Infinity;
         lastHitAt = -Infinity;
-        clearAimLock();
-        reticle.hidden = true;
-        reticle.classList.remove('is-fired');
+        beam.hidden = true;
+        beam.classList.remove('is-fired');
     }
 
     function loseHand() {
         resetHandAim();
-        setHandHint(endTime ? 'Vuelve a mostrar el índice extendido.' : 'Muestra tu mano con el índice extendido.');
+        setHandHint('Muestra un dedo de lado y señala hacia un blanco.');
     }
 
     function trackingFailed() {
@@ -606,7 +645,7 @@ function initializeArcade() {
     }
 
     function updateHandAim(sample, videoWidth, videoHeight) {
-        if (!sample || sample.extension < INDEX_EXTENDED) {
+        if (!sample) {
             loseHand();
             return;
         }
@@ -615,43 +654,36 @@ function initializeArcade() {
         // Match the camera crop and reflect the aim when the video is reflected.
         const x = view.width / 2 + (sample.x - 0.5) * videoWidth * fit * cameraOrientation.x;
         const y = view.height / 2 + (sample.y - 0.5) * videoHeight * fit * cameraOrientation.y;
-        if (x < 0 || x > view.width || y < 0 || y > view.height) {
+        const fingerX = (sample.x - sample.jointX) * videoWidth * fit * cameraOrientation.x;
+        const fingerY = (sample.y - sample.jointY) * videoHeight * fit * cameraOrientation.y;
+        const fingerLength = Math.hypot(fingerX, fingerY);
+        if (x < 0 || x > view.width || y < 0 || y > view.height || fingerLength < 8) {
             loseHand();
             return;
         }
+        const dx = fingerX / fingerLength;
+        const dy = fingerY / fingerLength;
+        const edgeX = dx === 0 ? Infinity : ((dx > 0 ? view.width : 0) - x) / dx;
+        const edgeY = dy === 0 ? Infinity : ((dy > 0 ? view.height : 0) - y) / dy;
 
         const now = performance.now();
         if (!endTime) {
             endTime = now + ROUND_TIME;
-            for (const zone of ZONES) spawnTarget(zone, now);
-            nextSpawn = now + 1450;
+            refreshTargets(now);
         }
         lastHandFrameAt = now;
-        reticle.style.transform = 'translate3d(' + x + 'px, ' + y + 'px, 0) translate(-50%, -50%)';
-        reticle.classList.toggle('is-fired', now - lastHitAt < AIM_TIME);
-        reticle.hidden = false;
-        setHandHint('Señala un blanco hasta llenar el círculo.');
         if (now >= endTime) return;
 
-        const target = targetAt(x, y);
-        if (!target) {
-            clearAimLock();
-            return;
+        const { hitbox, reach } = beamContact(x, y, dx, dy, Math.min(edgeX, edgeY));
+        if (hitbox && now - lastHitAt >= SHOT_INTERVAL) {
+            hitTarget(hitbox, x + dx * reach, y + dy * reach);
+            lastHitAt = now;
         }
-        if (lockedTarget !== target) {
-            lockedTarget = target;
-            lockStarted = now;
-        }
-        const progress = (now - lockStarted) / AIM_TIME;
-        if (progress < 1) {
-            reticle.style.setProperty('--aim-progress', progress * 360 + 'deg');
-            reticle.classList.add('is-locking');
-            return;
-        }
-        hitTarget(target, x, y);
-        clearAimLock();
-        lastHitAt = now;
-        reticle.classList.add('is-fired');
+        beam.style.width = reach + 'px';
+        beam.style.transform = 'translate3d(' + x + 'px, ' + y + 'px, 0) rotate(' + Math.atan2(dy, dx) + 'rad)';
+        beam.classList.toggle('is-fired', now - lastHitAt < SHOT_INTERVAL);
+        beam.hidden = false;
+        setHandHint('Guía la línea con el dedo hasta tocar un blanco.');
     }
 
     viewport.addEventListener('pointerup', (event) => {
@@ -689,7 +721,9 @@ function initializeArcade() {
             yawOffset = ZONE_YAW[button.dataset.zone];
             if (hasMotionReference) motionReference.copy(deviceRotation).invert();
             pointView(yawOffset);
-            clearAimLock();
+            resetHandAim();
+            advanceDetector?.reset();
+            if (endTime) refreshTargets(performance.now());
         });
     }
     new ResizeObserver(updateView).observe(viewport);
