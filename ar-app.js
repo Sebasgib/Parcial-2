@@ -262,6 +262,7 @@ function initializeArcade() {
     const forward = new THREE.Vector3();
     let best = readBest();
     let score = 0;
+    let hits;
     let endTime = 0;
     let nextSpawn = 0;
     let spawnBag = [];
@@ -393,6 +394,7 @@ function initializeArcade() {
 
     function startGame() {
         score = 0;
+        hits = { duck: 0, crystal: 0, bottle: 0 };
         endTime = 0;
         spawnBag = Math.random() < 0.5 ? ['bottle', 'crystal', 'duck'] : ['crystal', 'bottle', 'duck'];
         hasMotionReference = false;
@@ -434,10 +436,18 @@ function initializeArcade() {
     }
 
     function finishGame() {
-        if (score > best) {
+        best = Math.max(best, readBest());
+        const newRecord = score > best;
+        if (newRecord) {
             best = score;
             saveBest(best);
         }
+        HistorialJuego.registrar('patos-espaciales', {
+            marcador: `${score} puntos`,
+            resultado: newRecord ? 'Nuevo récord' : 'Ronda completada',
+            duracion: ROUND_TIME / 1000,
+            metricas: { Patos: hits.duck, Cristales: hits.crystal, Botellas: hits.bottle }
+        });
         $('final-score').textContent = score;
         $('final-best').textContent = best;
         setScreen('results', 'results-title');
@@ -579,6 +589,7 @@ function initializeArcade() {
         const target = targets.get(hitbox);
         const points = POINTS[target.type];
         score += points;
+        hits[target.type] += 1;
         scoreLabel.textContent = score;
         targets.delete(hitbox);
         target.model.removeFromParent();

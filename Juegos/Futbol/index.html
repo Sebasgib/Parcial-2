@@ -13,6 +13,7 @@
 
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="../salir.css">
+  <link rel="stylesheet" href="../historial.css">
 </head>
 
 <!-- La clase del body (theme-f11 / theme-street) cambia toda la estética según el estadio elegido -->
@@ -44,6 +45,7 @@
         <nav class="menu-actions" aria-label="Menú principal">
           <button type="button" class="btn btn-primary btn-xl" data-action="go-mode">Jugar</button>
           <button type="button" class="btn" data-action="show-controls">Controles</button>
+          <button type="button" class="btn" data-game-history="golazo" aria-haspopup="dialog">Historial</button>
           <a href="../../index.html#videojuegos" class="btn btn-ghost">Salir al portafolio</a>
         </nav>
 
@@ -273,6 +275,7 @@
           <button type="button" class="btn btn-primary" data-action="rematch">Revancha</button>
           <button type="button" class="btn" data-action="change-teams">Cambiar equipos</button>
           <button type="button" class="btn btn-ghost" data-action="menu">Menú principal</button>
+          <button type="button" class="btn" data-game-history="golazo" aria-haspopup="dialog">Historial</button>
           <a href="../../index.html#videojuegos" class="btn btn-ghost">Salir al portafolio</a>
         </div>
       </article>
@@ -304,6 +307,7 @@
 
   </main>
 
+  <script src="../historial.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

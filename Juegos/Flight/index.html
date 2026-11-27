@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#152628">
   <title>Cielo en disputa</title>
   <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../historial.css">
   <style>
     /* Botón "Salir" compartido (copia de ../salir.css incrustada para no bloquear el primer pintado) */
     .exit-btn{position:fixed;top:12px;left:12px;z-index:1000;display:inline-flex;align-items:center;gap:6px;padding:9px 15px;border:1px solid rgba(255,255,255,.4);border-radius:999px;background:rgba(10,14,28,.72);backdrop-filter:blur(4px);color:#fff;font:700 13px/1 system-ui,"Segoe UI",sans-serif;letter-spacing:.04em;text-decoration:none;text-shadow:none;cursor:pointer;transition:background .18s ease,border-color .18s ease,transform .18s ease}.exit-btn:hover,.exit-btn:focus-visible{background:#d9363e;border-color:#fff;transform:translateX(-2px)}.exit-btn:focus-visible{outline:2px solid #fff;outline-offset:3px}
@@ -320,11 +321,13 @@
         <p class="dialog-copy" id="copy">Agosto de 1945. Pilotas un caza japonés en una última misión de defensa. Intercepta la formación estadounidense antes de que llegue a las islas.</p>
         <div class="dialog-rule"></div>
         <button class="launch" id="start">Iniciar misión</button>
+        <button class="launch ghost" type="button" data-game-history="cielo-en-disputa" aria-haspopup="dialog">Historial</button>
         <p class="fine-print" id="fineprint">Ficción interactiva inspirada en la Segunda Guerra Mundial. Los desenlaces alternativos no representan hechos históricos.</p>
       </div>
     </section>
   </main>
 
+  <script src="../historial.js" defer></script>
   <script>
     /* Carga diferida del juego: three.min.js (~150 KB comprimidos) y js/game.js solo se descargan y ejecutan cuando hacen falta.
        Así la página abre al instante y no se construye la escena 3D hasta que el usuario interactúa. */

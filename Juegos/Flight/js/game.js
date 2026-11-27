@@ -50,6 +50,9 @@
       const wrecks = [];
       let mode = 'ready';
       let score = 0;
+      let shots = 0;
+      let hits = 0;
+      let escaped = 0;
       let timeLeft = MISSION_TIME;
       let spawnClock = 0;
       let lastShot = -10;
@@ -1026,6 +1029,7 @@
         player.health = MAX_HEALTH;
         player.invulnerable = 0;
         score = 0;
+        shots = hits = escaped = 0;
         timeLeft = MISSION_TIME;
         spawnClock = 1.1;
         lastShot = -10;
@@ -1061,6 +1065,12 @@
       const finishGame = victory => {
         if (mode !== 'playing') return;
         mode = victory ? 'won' : 'lost';
+        HistorialJuego.registrar('cielo-en-disputa', {
+          marcador: `${score} / ${KILLS_TO_WIN} interceptados`,
+          resultado: victory ? 'Victoria' : 'Derrota',
+          duracion: MISSION_TIME - Math.max(0, timeLeft),
+          metricas: { Disparos: shots, Impactos: hits, 'Bombarderos que escaparon': escaped, Blindaje: Math.max(0, player.health) }
+        });
         pauseButton.hidden = true;
         overlay.hidden = false;
         document.querySelector('#eyebrow').textContent = victory ? 'Final alternativo · misión cumplida' : 'Final histórico · defensa superada';
@@ -1119,6 +1129,7 @@
         if ((keys.has(' ') || firing) && clockT - lastShot > .17) {
           gunSide *= -1;
           fireBullet(player.x + 2.4, player.y - .1, gunSide * 1.5, 62, 0, true);
+          shots++;
           lastShot = clockT;
           audio.shot();
           fireFx.emit(player.x + 2.6, player.y - .1, gunSide * 1.5, 4, 0, 0, .1, 1.2, .3, 0xfff1b8, 0xff9a4a, .9);
@@ -1148,6 +1159,7 @@
           if (enemy.x < edgeAt(0).left - 14) {
             enemies.splice(ei, 1);
             scene.remove(enemy.model.root);
+            escaped++;
             player.health -= 1;
             shake = Math.max(shake, .6);
             setHealthFlash();
@@ -1166,10 +1178,14 @@
               scene.remove(b.mesh);
               bullets.splice(bi, 1);
               enemy.health -= 1;
+              hits++;
               hitEnemyFlash(enemy);
               for (let k = 0; k < 8; k++) fireFx.emit(b.x, b.y, b.z, rand(-6, 6), rand(-6, 6), rand(-3, 3), rand(.15, .4), .9, .2, 0xffe9a8, 0xff7a38, 1, 2);
               audio.hit();
-              if (enemy.health <= 0) killEnemy(enemy, ei);
+              if (enemy.health <= 0) {
+                killEnemy(enemy, ei);
+                if (mode !== 'playing') return;
+              }
               break;
             }
           }
@@ -1316,7 +1332,7 @@
       window.addEventListener('resize', setSize);
       window.addEventListener('keydown', event => {
         const key = event.key.toLowerCase();
-        if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) event.preventDefault();
+        if (mode === 'playing' && [' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) event.preventDefault();
         if ((key === 'p' || key === 'escape') && !event.repeat && mode === 'playing') { event.preventDefault(); togglePause(); return; }
         if (key === 'm' && !event.repeat) audio.toggle();
         if (!paused) keys.add(key);

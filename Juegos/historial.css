@@ -1,0 +1,40 @@
+.game-history {
+  box-sizing: border-box;
+  width: min(42rem, calc(100% - 2rem));
+  max-height: 85vh;
+  overflow: auto;
+  margin: auto;
+  padding: 1rem;
+  border: 1px solid #687184;
+  border-radius: .75rem;
+  background: #181d2a;
+  color: #f5f7fc;
+  cursor: default;
+  font: 400 1rem/1.5 system-ui, sans-serif;
+}
+
+.game-history::backdrop { background: rgb(0 0 0 / 70%); }
+
+.game-history header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+.game-history h2 { margin: 0; font: 700 1.25rem/1.2 system-ui, sans-serif; }
+
+.game-history button {
+  padding: .4rem .7rem;
+  border: 1px solid #a4afc4;
+  border-radius: .4rem;
+  background: #2d374b;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.game-history ol { margin: .75rem 0 0; padding: 0; list-style: none; }
+.game-history ol:empty { margin: 0; }
+.game-history li { padding: .7rem 0; border-top: 1px solid #404a5f; overflow-wrap: anywhere; }
+.game-history time, .game-history li span { display: block; color: #c7d0e2; font-size: .875rem; }

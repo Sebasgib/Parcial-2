@@ -6,6 +6,7 @@
 <meta name="description" content="Fútbol 2D estilo Atari: 1 jugador contra la IA o 2 jugadores en el mismo teclado.">
 <title>Fútbol Atari 2D</title>
 <link rel="stylesheet" href="../salir.css">
+<link rel="stylesheet" href="../historial.css">
 <style>
   html, body { height: 100%; margin: 0; background: #000; overflow: hidden; }
   body { display: flex; align-items: center; justify-content: center; }
@@ -21,10 +22,13 @@
   }
 
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .retro-history.exit-btn { left: auto; right: 12px; }
+  .retro-history[hidden] { display: none; }
 </style>
 </head>
 <body>
 <a class="exit-btn" href="../../index.html#videojuegos" aria-label="Salir del juego y volver al portafolio" title="Volver al portafolio">&larr; Salir</a>
+<button class="exit-btn retro-history" type="button" data-game-history="futbol-atari" aria-haspopup="dialog">Historial</button>
 
 <main class="tv">
   <canvas id="screen" width="320" height="200" aria-label="Fútbol 2D estilo Atari: cancha, arcos, jugadores y arqueros"></canvas>
@@ -32,6 +36,7 @@
 <p class="sr-only">Controles: jugador 1 con W, A, S y D y la barra espaciadora para patear. Jugador 2 con las flechas y Enter. P pausa, Escape vuelve al menú, M silencia el sonido.</p>
 <noscript>Este juego necesita JavaScript.</noscript>
 
+<script src="../historial.js"></script>
 <script>
 (() => {
   'use strict';
@@ -169,17 +174,19 @@
   let stateTimer = 0, flashTeam = 0, kickTeam = 0, stillTime = 0, overLock = 0;
   let ball = null, players = [], posts = [], teams = [];
   let fps = 0, fpsFrames = 0, fpsClock = 0;
+  const historyButton = document.querySelector('[data-game-history]');
 
   const speedFactor = () => 1 + 0.1 * level;
 
   const makeBody = (x, y, r, mass, rest) => ({ x, y, vx: 0, vy: 0, r, im: mass ? 1 / mass : 0, e: rest });
 
   const makeTeams = () => [
-    { index: 0, dir: 1, name: 'P1', color: '#d94a3a', dark: '#8c241a', glove: '#f8d838', score: 0 },
-    { index: 1, dir: -1, name: 'P2', color: '#3a62d9', dark: '#1f3a8c', glove: '#38e0d8', score: 0 },
+    { index: 0, dir: 1, name: 'P1', color: '#d94a3a', dark: '#8c241a', glove: '#f8d838', score: 0, kicks: 0 },
+    { index: 1, dir: -1, name: 'P2', color: '#3a62d9', dark: '#1f3a8c', glove: '#38e0d8', score: 0, kicks: 0 },
   ];
 
   function newMatch(two) {
+    historyButton.hidden = true;
     twoPlayers = two;
     teams = makeTeams();
     teams[1].name = two ? 'P2' : 'IA';
@@ -309,6 +316,7 @@
     const power = KICK_POWER * speedFactor();
     ball.vx += dx / d * power; ball.vy += dy / d * power;
     p.kickCool = 14;
+    p.team.kicks++;
     audio.kick();
   }
 
@@ -434,12 +442,27 @@
       physics();
       stateTimer -= STEP;
       if (stateTimer <= 0) {
-        if (teams.some(t => t.score >= GOALS_TO_WIN)) { state = 'over'; overLock = 1.2; audio.whistle(); }
+        if (teams.some(t => t.score >= GOALS_TO_WIN)) endMatch();
         else kickoff(1 - flashTeam);
       }
     } else if (state === 'over') {
       if (overLock > 0) overLock -= STEP;
     }
+  }
+
+  function endMatch() {
+    state = 'over';
+    overLock = 1.2;
+    audio.whistle();
+    historyButton.hidden = false;
+    const [home, away] = teams;
+    HistorialJuego.registrar('futbol-atari', {
+      marcador: `${home.name} ${home.score} - ${away.score} ${away.name}`,
+      resultado: `Ganó ${teams[flashTeam].name}`,
+      contexto: twoPlayers ? 'Dos jugadores' : 'Contra la IA',
+      duracion: liveTime,
+      metricas: { Patadas: `${home.kicks} - ${away.kicks}`, Nivel: level + 1 }
+    });
   }
 
   /** Gol: el balón cruza por completo la línea de fondo, entre los postes. */
@@ -629,7 +652,7 @@
       else if (code === 'Enter' || code === 'NumpadEnter' || code === 'Space') startFromMenu(menuIndex);
       return;
     }
-    if (code === 'Escape') { state = 'menu'; keys.clear(); return; }
+    if (code === 'Escape') { state = 'menu'; historyButton.hidden = false; keys.clear(); return; }
     if (code === 'KeyP' && (state === 'play' || state === 'pause' || state === 'ready' || state === 'goal')) {
       if (state === 'pause') state = resumeState; else { resumeState = state; state = 'pause'; keys.clear(); }
       return;
@@ -638,6 +661,7 @@
   }
 
   window.addEventListener('keydown', e => {
+    if (e.target === historyButton && ['Enter', 'NumpadEnter', 'Space'].includes(e.code)) return;
     if (CONTROL_CODES.has(e.code)) e.preventDefault();
     audio.init();
     const fresh = !keys.has(e.code);

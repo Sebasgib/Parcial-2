@@ -1467,10 +1467,12 @@ function togglePause(force) {
 function endMatch() {
   const g = game, [h, a] = g.teams;
   const res = h.score > a.score ? 'win' : h.score < a.score ? 'loss' : 'draw';
+  const marcador = `${h.score} - ${a.score}`;
+  const modo = `${g.mode.name} · ${g.size}v${g.size} · IA ${g.diff.label}`;
   $('#end-card').dataset.result = res;
   $('#end-title').textContent = res === 'win' ? '¡Victoria!' : res === 'loss' ? 'Derrota' : 'Empate';
-  $('#end-mode').textContent = `${g.mode.name} · ${g.size}v${g.size} · IA ${g.diff.label}`;
-  $('#end-result').textContent = `${h.score} - ${a.score}`;
+  $('#end-mode').textContent = modo;
+  $('#end-result').textContent = marcador;
 
   for (const [team, id] of [[h, '#end-home'], [a, '#end-away']]) {
     const box = $(id);
@@ -1501,6 +1503,13 @@ function endMatch() {
     ['Patadas', h.stats.kicks, a.stats.kicks, ''],
   ];
   if (g.powersOn) rows.push(['Mejor combo', h.stats.combo, a.stats.combo, '']);
+  HistorialJuego.registrar('golazo', {
+    marcador: `${h.data.name} ${marcador} ${a.data.name}`,
+    resultado: res === 'draw' ? 'Empate' : `Ganó ${res === 'win' ? h.data.name : a.data.name}`,
+    contexto: `${modo} · Humanos ${g.humans}`,
+    duracion: g.time,
+    metricas: Object.fromEntries(rows.map(([label, vh, va, unit]) => [label, `${vh}${unit} - ${va}${unit}`]))
+  });
   const stats = $('#end-stats');
   stats.replaceChildren();
   for (const [label, vh, va, unit] of rows) {

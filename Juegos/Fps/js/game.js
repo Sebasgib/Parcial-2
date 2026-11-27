@@ -706,8 +706,13 @@
   function playerAttack() {
     if (P.cd > 0 || P.dead) return;
     const w = WEAPONS[P.wep];
-    if (w.type === 'melee') { P.cd = w.cd; P.swing = 0; P.swingHit = false; Sfx.swing(); return; }
+    if (w.type === 'melee') {
+      S.meleeAttacks++;
+      P.cd = w.cd; P.swing = 0; P.swingHit = false; Sfx.swing();
+      return;
+    }
     if (P.ammo[P.wep] <= 0) { Sfx.empty(); P.cd = 0.3; showMsg('SIN MUNICIÓN', 'Cambia de arma o busca una caja', 1.2); return; }
+    S.rangedAttacks++;
     P.ammo[P.wep]--;
     P.cd = w.cd; P.swing = 0;
     const fwd = new T.Vector3(0, 0, -1).applyEuler(camera.rotation);
@@ -862,6 +867,7 @@
     P.yaw = W.playerStart.yaw; P.pitch = -0.1;
     P.ammo = WEAPONS.map(w => w.start);
     Object.assign(S, { state: 'play', paused: false, wave: -1, queue: [], nextWaveT: 1.0, policeMode: false, shake: 0, dmgFlash: 0, gasT: 0, pickT: 5, finished: false, time: 0, allyT: 0 });
+    S.meleeAttacks = S.rangedAttacks = 0;
     for (let i = 0; i < ALLY_MAX - 1; i++) spawnAlly(true);
     setTimeout(() => { if (S.state === 'play') showMsg('¡TUS COMPAÑERAS TE AYUDAN!', 'La barra de ' + own.short + ' defiende contigo', 3); }, 3200);
     buildViewmodel(); buildSlots();
@@ -879,11 +885,19 @@
   function endGame(win) {
     if (S.state !== 'play') return;
     S.state = 'over'; P.dead = !win;
+    const waves = `${Math.max(0, S.wave + (win ? 1 : 0))}/${levelDef.waves.length}`;
+    HistorialJuego.registrar('barras-bravas', {
+      marcador: `${P.score} puntos`,
+      resultado: win ? 'Victoria' : 'Derrota',
+      contexto: `${levelDef.name} · ${own.name} vs. ${rival.name}`,
+      duracion: S.time,
+      metricas: { Oleadas: waves, KO: P.kills, 'Ataques cuerpo a cuerpo': S.meleeAttacks, 'Ataques a distancia': S.rangedAttacks }
+    });
     Sfx.drumLoop(false); mouseDown = false;
     if (document.exitPointerLock) document.exitPointerLock();
     $('end-title').textContent = win ? '¡VICTORIA! ' + own.cheer : 'TE CAYERON, PARCE';
     $('end-title').className = win ? 'win' : 'lose';
-    $('end-stats').innerHTML = 'Oleadas: <b>' + Math.max(0, S.wave + (win ? 1 : 0)) + '/' + levelDef.waves.length + '</b> · KO: <b>' + P.kills + '</b> · Puntos: <b>' + P.score + '</b>';
+    $('end-stats').innerHTML = 'Oleadas: <b>' + waves + '</b> · KO: <b>' + P.kills + '</b> · Puntos: <b>' + P.score + '</b>';
     $('end').classList.remove('hidden');
     $('policefx').classList.remove('on');
   }

@@ -8,7 +8,9 @@
     <title>Patos espaciales | Portafolio Multimedia</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="Juegos/PatosEspaciales/styles.css">
+    <link rel="stylesheet" href="Juegos/historial.css">
     <script defer src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+    <script defer src="Juegos/historial.js"></script>
     <script defer src="ar-app.js"></script>
 </head>
 <body>
@@ -64,6 +66,7 @@
                     <div class="actions">
                         <button class="button button-primary" id="play" type="button" disabled>Jugar</button>
                         <button class="button" id="showroom" type="button" disabled>Showroom 3D</button>
+                        <button class="button" type="button" data-game-history="patos-espaciales" aria-haspopup="dialog">Historial</button>
                     </div>
                 </div>
             </section>
@@ -105,6 +108,7 @@
                     <div class="actions">
                         <button class="button button-primary" id="replay" type="button">Volver a jugar</button>
                         <button class="button" id="result-back" type="button">Menú</button>
+                        <button class="button" type="button" data-game-history="patos-espaciales" aria-haspopup="dialog">Historial</button>
                     </div>
                 </div>
             </section>
