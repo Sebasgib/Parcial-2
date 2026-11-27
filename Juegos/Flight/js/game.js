@@ -1000,12 +1000,14 @@
          9. HUD, ESTADO Y REGLAS DE LA MISIÓN (idénticas al juego original)
          ================================================================ */
       const updateHud = () => {
+        const health = clamp(player.health, 0, MAX_HEALTH);
         healthElement.replaceChildren(...Array.from({ length: MAX_HEALTH }, (_, index) => {
           const dot = document.createElement('i');
-          if (index >= player.health) dot.className = 'off';
+          if (index >= health) dot.className = 'off';
           return dot;
         }));
-        healthElement.setAttribute('aria-label', `${player.health} de ${MAX_HEALTH} puntos de blindaje`);
+        healthElement.setAttribute('aria-valuenow', health);
+        healthElement.setAttribute('aria-valuetext', `${health} de ${MAX_HEALTH} puntos`);
         scoreElement.textContent = `${String(score).padStart(2, '0')} / ${String(KILLS_TO_WIN).padStart(2, '0')}`;
         const seconds = Math.max(0, Math.ceil(timeLeft));
         timerElement.textContent = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
