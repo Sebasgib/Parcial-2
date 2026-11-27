@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
 <meta charset="UTF-8">
 <title>Juego básico de Pong en HTML</title>
@@ -64,13 +64,13 @@
       <button id="history-close" class="option" type="button" aria-label="Cerrar">&#10005;</button>
     </div>
 
-    <div class="tabs" role="tablist" aria-labelledby="history-title">
-      <button class="option selected" role="tab" id="records-tab" data-tab="records" aria-controls="tab-records" aria-selected="true" type="button">Récords</button>
-      <button class="option" role="tab" id="historial-tab" data-tab="historial" aria-controls="tab-historial" aria-selected="false" tabindex="-1" type="button">Historial</button>
-      <button class="option" role="tab" id="stats-tab" data-tab="stats" aria-controls="tab-stats" aria-selected="false" tabindex="-1" type="button">Estadísticas</button>
+    <div class="tabs" role="tablist">
+      <button class="option selected" role="tab" data-tab="records" aria-selected="true" type="button">Récords</button>
+      <button class="option" role="tab" data-tab="historial" aria-selected="false" type="button">Historial</button>
+      <button class="option" role="tab" data-tab="stats" aria-selected="false" type="button">Estadísticas</button>
     </div>
 
-    <div id="tab-records" class="tab-view" role="tabpanel" aria-labelledby="records-tab" tabindex="0">
+    <section id="tab-records" class="tab-view">
       <label class="filter">Categoría <select id="filter-category"></select></label>
       <div class="table-wrap">
         <table id="records-table">
@@ -78,20 +78,20 @@
           <tbody></tbody>
         </table>
       </div>
-    </div>
+    </section>
 
-    <div id="tab-historial" class="tab-view" role="tabpanel" aria-labelledby="historial-tab" tabindex="0" hidden>
+    <section id="tab-historial" class="tab-view" hidden>
       <div class="table-wrap">
         <table id="history-table">
           <thead><tr><th>Fecha</th><th>Modo</th><th>Marcador</th><th>Resultado</th><th title="Mayor intercambio de golpes seguidos">Rally</th><th title="Disparos potentes">Pot.</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
-    </div>
+    </section>
 
-    <div id="tab-stats" class="tab-view" role="tabpanel" aria-labelledby="stats-tab" tabindex="0" hidden>
+    <section id="tab-stats" class="tab-view" hidden>
       <dl id="stats-list" class="stats-list"></dl>
-    </div>
+    </section>
 
     <div class="history-actions">
       <button id="btn-export" class="option" type="button">Exportar JSON</button>

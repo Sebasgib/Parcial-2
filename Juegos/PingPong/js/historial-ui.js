@@ -10,8 +10,7 @@ const HistorialUI = (() => {
   const filtro = $('filter-category');
   const mensaje = $('history-msg');
   const mejorLinea = $('best-line');
-  const tablist = panel.querySelector('[role="tablist"]');
-  const tabs = Array.from(tablist.querySelectorAll('[data-tab]'));
+  const tabs = Array.from(document.querySelectorAll('[data-tab]'));
   const vistas = { records: $('tab-records'), historial: $('tab-historial'), stats: $('tab-stats') };
 
   const celda = (texto, clase) => {
@@ -133,7 +132,6 @@ const HistorialUI = (() => {
       const activa = t.dataset.tab === nombre;
       t.classList.toggle('selected', activa);
       t.setAttribute('aria-selected', String(activa));
-      t.tabIndex = activa ? 0 : -1;
     });
     for (const k of Object.keys(vistas)) vistas[k].hidden = k !== nombre;
   }
@@ -194,21 +192,6 @@ const HistorialUI = (() => {
   cerrarBtn.addEventListener('click', cerrar);
   panel.addEventListener('click', e => { if (e.target === panel) cerrar(); });
   tabs.forEach(t => t.addEventListener('click', () => seleccionarTab(t.dataset.tab)));
-  tablist.addEventListener('keydown', e => {
-    const actual = tabs.indexOf(e.target);
-    if (actual === -1) return;
-    let siguiente;
-    switch (e.key) {
-      case 'ArrowLeft': siguiente = (actual + tabs.length - 1) % tabs.length; break;
-      case 'ArrowRight': siguiente = (actual + 1) % tabs.length; break;
-      case 'Home': siguiente = 0; break;
-      case 'End': siguiente = tabs.length - 1; break;
-      default: return;
-    }
-    e.preventDefault();
-    seleccionarTab(tabs[siguiente].dataset.tab);
-    tabs[siguiente].focus();
-  });
   filtro.addEventListener('change', pintarRecords);
   $('btn-export').addEventListener('click', exportar);
   $('btn-import').addEventListener('click', () => $('file-import').click());
