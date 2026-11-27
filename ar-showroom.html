@@ -45,7 +45,7 @@
                 </a-scene>
             </div>
             <div class="effects" id="effects" aria-hidden="true"></div>
-            <div class="hand-reticle" id="hand-reticle" aria-hidden="true" hidden></div>
+            <div class="hand-reticle" id="hand-reticle" hidden></div>
 
             <section class="menu" id="menu" aria-labelledby="title">
                 <div class="menu-art">
@@ -90,9 +90,15 @@
                     <h3>Personaliza tu pato</h3>
                     <p>Toca el pato para cambiar su color y hacerlo girar.</p>
                     <label class="color-control" for="model-color">Color <input id="model-color" type="color" value="#ffcb39"></label>
-                    <label class="range-control" for="model-size">Tamaño <output id="model-size-value" for="model-size">100 %</output></label>
+                    <div class="range-control">
+                        <label for="model-size">Tamaño</label>
+                        <output id="model-size-value" for="model-size">100 %</output>
+                    </div>
                     <input id="model-size" type="range" min="75" max="125" value="100">
-                    <label class="range-control" for="spin-speed">Velocidad de giro <output id="spin-speed-value" for="spin-speed">1×</output></label>
+                    <div class="range-control">
+                        <label for="spin-speed">Velocidad de giro</label>
+                        <output id="spin-speed-value" for="spin-speed">1×</output>
+                    </div>
                     <input id="spin-speed" type="range" min="0.5" max="2.5" step="0.25" value="1">
                     <button class="button" id="spin" type="button">Girar pato</button>
                 </div>
