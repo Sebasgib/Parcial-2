@@ -1,6 +1,7 @@
 'use strict';
 
 const ROUND_TIME = 30_000;
+const AFRAME_URL = 'https://aframe.io/releases/1.7.1/aframe.min.js';
 const SHOWROOM_DEPTH = 3;
 const TARGET_MIN_DEPTH = 22;
 const TARGET_MAX_DEPTH = 34;
@@ -14,12 +15,14 @@ const TARGET_SLOTS = [[0.5, 0.45], [0.26, 0.2], [0.74, 0.2], [0.31, 0.82], [0.69
 const $ = (id) => document.getElementById(id);
 
 const stage = $('stage');
-const scene = $('scene');
 const viewport = $('viewport');
 const cameraButton = $('camera-toggle');
 const cameraFeed = $('camera-feed');
 const orientationControl = $('camera-orientation');
 const status = $('status');
+const playButton = $('play');
+const replayButton = $('replay');
+const showroomButton = $('showroom');
 const screens = { menu: $('menu'), game: $('hud'), studio: $('studio'), results: $('results') };
 const modelColor = $('model-color');
 const modelSize = $('model-size');
@@ -30,6 +33,8 @@ let cameraRequest = 0;
 let cameraOpening = null;
 let facingMode = '';
 let cameraOrientation = { x: 1, y: 1 };
+let arcade;
+let motionPermission;
 
 function updateCameraOrientation() {
     const mode = orientationControl.value;
@@ -231,14 +236,12 @@ function createModels(THREE) {
     return { templates: { duck, bottle, crystal }, showroom, showroomFeathers };
 }
 
-function initializeArcade() {
+function initializeArcade(scene) {
     const { THREE } = window.AFRAME;
     const { templates, showroom, showroomFeathers } = createModels(THREE);
     const targetLayer = $('targets').object3D;
     const showroomRoot = $('showroom-object');
     const spinButton = $('spin');
-    const playButton = $('play');
-    const replayButton = $('replay');
     const handHint = $('hand-hint');
     const reticle = $('hand-reticle');
     const panel = document.querySelector('.control-panel');
@@ -278,7 +281,6 @@ function initializeArcade() {
     let lockedTarget = null;
     let lockStarted = 0;
     let hasMotionReference = false;
-    let motionRequested = false;
     let view = { width: 1, height: 1, halfHeight: 1, halfWidth: 1, targetScale: 1 };
 
     function collider(parent, x, y, z) {
@@ -356,18 +358,6 @@ function initializeArcade() {
         pointView(yaw, pitch);
     }
 
-    async function enableMotion() {
-        const sensors = window.DeviceOrientationEvent;
-        if (motionRequested || !sensors || !window.matchMedia('(any-pointer: coarse)').matches) return;
-        motionRequested = true;
-        try {
-            if (typeof sensors.requestPermission === 'function' && await sensors.requestPermission() !== 'granted') return;
-            window.addEventListener('deviceorientation', deviceMoved);
-        } catch {
-            // Targets keep appearing in front of the camera without motion sensors.
-        }
-    }
-
     function setScreen(screen, focusId) {
         screenRevision += 1;
         handTracker?.stop();
@@ -406,14 +396,13 @@ function initializeArcade() {
         setScreen('game', 'quit');
     }
 
-    async function prepareGame() {
-        if (playButton.disabled) return;
+    async function prepareGame(motion) {
         const request = screenRevision;
-        playButton.disabled = replayButton.disabled = true;
-        const camera = openCamera();
-        void enableMotion();
+        const stream = cameraStream;
+        void motion.then((granted) => {
+            if (granted) window.addEventListener('deviceorientation', deviceMoved);
+        });
         try {
-            if (!(await camera) || request !== screenRevision) return;
             if (!handTracker) {
                 status.textContent = 'Cargando el reconocimiento de manos…';
                 const [{ createHandTracker }, { createAdvanceDetector }] = await Promise.all([
@@ -423,15 +412,13 @@ function initializeArcade() {
                 handTracker = await createHandTracker(cameraFeed, updateHandAim, trackingFailed);
                 advanceDetector = createAdvanceDetector(cameraFeed);
             }
-            if (request !== screenRevision || !cameraStream) return;
+            if (request !== screenRevision || stream !== cameraStream) return;
             status.textContent = '';
             startGame();
         } catch {
-            if (request === screenRevision && cameraStream) {
+            if (request === screenRevision && stream === cameraStream) {
                 status.textContent = 'No se pudo cargar el reconocimiento de manos. Comprueba tu conexión y vuelve a intentar.';
             }
-        } finally {
-            playButton.disabled = replayButton.disabled = false;
         }
     }
 
@@ -690,15 +677,12 @@ function initializeArcade() {
         $('spin-speed-value').value = Number(spinSpeed.value).toLocaleString('es') + '×';
     });
 
-    playButton.addEventListener('click', prepareGame);
-    replayButton.addEventListener('click', prepareGame);
     stage.addEventListener('camera-stopped', () => {
         if (stage.dataset.screen === 'game') setScreen('menu', 'play');
     });
     stage.addEventListener('camera-orientation-changed', () => {
         if (stage.dataset.screen === 'game') loseHand();
     });
-    $('showroom').addEventListener('click', () => setScreen('studio', 'studio-back'));
     $('quit').addEventListener('click', () => setScreen('menu', 'play'));
     $('studio-back').addEventListener('click', () => setScreen('menu', 'showroom'));
     $('result-back').addEventListener('click', () => setScreen('menu', 'play'));
@@ -706,23 +690,88 @@ function initializeArcade() {
     new ResizeObserver(() => {
         if (stage.dataset.screen === 'studio') layoutShowroom();
     }).observe(panel);
-    playButton.disabled = false;
-    $('showroom').disabled = false;
-    if (status.textContent === 'Cargando escena 3D…') status.textContent = '';
+    return { prepareGame, showStudio: () => setScreen('studio', 'studio-back') };
 }
 
-if (window.AFRAME && typeof ResizeObserver !== 'undefined') {
-    if (scene.renderStarted) initializeArcade();
-    else {
-        const loadingTimeout = setTimeout(() => {
-            status.textContent = 'La escena 3D no está disponible. Comprueba que tu navegador admite WebGL.';
-        }, 8000);
-        scene.addEventListener('renderstart', () => {
-            clearTimeout(loadingTimeout);
-            if (status.textContent.startsWith('La escena 3D')) status.textContent = '';
-            initializeArcade();
-        }, { once: true });
+async function requestMotionPermission() {
+    const sensors = window.DeviceOrientationEvent;
+    if (!sensors || !window.matchMedia('(any-pointer: coarse)').matches) return false;
+    try {
+        return typeof sensors.requestPermission !== 'function' || await sensors.requestPermission() === 'granted';
+    } catch {
+        return false;
     }
-} else {
-    status.textContent = 'No se pudo cargar la escena de A-Frame. Recarga la página en un navegador actualizado.';
 }
+
+async function loadArcade() {
+    if (arcade) return arcade;
+    const loading = 'Cargando escena 3D…';
+    status.textContent = loading;
+    try {
+        if (!window.AFRAME) {
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = AFRAME_URL;
+                script.addEventListener('load', resolve, { once: true });
+                script.addEventListener('error', () => {
+                    script.remove();
+                    reject(new Error('A-Frame no está disponible.'));
+                }, { once: true });
+                document.head.append(script);
+            });
+        }
+
+        const scene = $('scene-template').content.firstElementChild.cloneNode(true);
+        try {
+            await new Promise((resolve, reject) => {
+                const ready = () => {
+                    clearTimeout(timeout);
+                    resolve();
+                };
+                const timeout = setTimeout(() => {
+                    scene.removeEventListener('renderstart', ready);
+                    reject(new Error('La escena 3D no inició.'));
+                }, 8000);
+                scene.addEventListener('renderstart', ready, { once: true });
+                viewport.append(scene);
+            });
+            arcade = initializeArcade(scene);
+            return arcade;
+        } catch (error) {
+            scene.remove();
+            throw error;
+        }
+    } finally {
+        if (status.textContent === loading) status.textContent = '';
+    }
+}
+
+async function openArcade(event) {
+    if (playButton.disabled) return;
+    const playing = event.currentTarget !== showroomButton;
+    const screen = stage.dataset.screen;
+    playButton.disabled = replayButton.disabled = showroomButton.disabled = true;
+    let request = cameraRequest;
+    try {
+        if (playing) {
+            const camera = openCamera();
+            request = cameraRequest;
+            // El permiso de movimiento debe solicitarse durante el clic, antes de cargar la escena.
+            motionPermission ??= requestMotionPermission();
+            if (!(await camera) || request !== cameraRequest || stage.dataset.screen !== screen) return;
+        }
+
+        const instance = await loadArcade();
+        if (stage.dataset.screen !== screen) return;
+        if (!playing) instance.showStudio();
+        else if (request === cameraRequest && cameraStream) await instance.prepareGame(motionPermission);
+    } catch {
+        if (!playing || request === cameraRequest) {
+            status.textContent = 'No se pudo abrir la escena 3D. Comprueba tu conexión y que el navegador admita WebGL.';
+        }
+    } finally {
+        playButton.disabled = replayButton.disabled = showroomButton.disabled = false;
+    }
+}
+
+for (const button of [playButton, replayButton, showroomButton]) button.addEventListener('click', openArcade);

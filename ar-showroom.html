@@ -6,10 +6,10 @@
     <meta name="theme-color" content="#0d0a17">
     <meta name="description" content="Apunta con la mano para atrapar patos espaciales y recoger cristales en realidad aumentada.">
     <title>Patos espaciales | Portafolio Multimedia</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap">
+    <link rel="preload" href="Juegos/PatosEspaciales/barlow-condensed-800.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="Juegos/PatosEspaciales/dm-sans-400-700.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="Juegos/PatosEspaciales/styles.css">
     <link rel="stylesheet" href="Juegos/historial.css">
-    <script defer src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
     <script defer src="Juegos/historial.js"></script>
     <script defer src="ar-app.js"></script>
 </head>
@@ -28,28 +28,32 @@
                 <button class="button camera-button" id="camera-toggle" type="button" aria-pressed="false">Activar cámara</button>
             </div>
         </header>
-        <p class="status" id="status" role="status">Cargando escena 3D…</p>
+        <p class="status" id="status" role="status"></p>
 
         <main class="stage" id="stage" data-screen="menu">
             <video class="camera-feed" id="camera-feed" autoplay muted playsinline aria-hidden="true"></video>
             <div class="space" aria-hidden="true"></div>
             <div class="viewport" id="viewport" aria-hidden="true">
-                <a-scene id="scene" embedded renderer="alpha: true; antialias: auto; maxCanvasWidth: 1440; maxCanvasHeight: 1080"
-                    vr-mode-ui="enabled: false" xr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
-                    <a-entity camera="active: true; fov: 58; near: 0.1; far: 60" position="0 0 0"></a-entity>
-                    <a-entity light="type: ambient; color: #e5d5ff; intensity: 1.35"></a-entity>
-                    <a-entity light="type: directional; color: #fff0d8; intensity: 2.25" position="-3 5 2"></a-entity>
-                    <a-entity light="type: directional; color: #a28cff; intensity: 1.4" position="3 1 -4"></a-entity>
-                    <a-entity id="targets"></a-entity>
-                    <a-entity id="showroom-object" visible="false"></a-entity>
-                </a-scene>
+                <template id="scene-template">
+                    <a-scene embedded renderer="alpha: true; antialias: auto; maxCanvasWidth: 1440; maxCanvasHeight: 1080"
+                        vr-mode-ui="enabled: false" xr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+                        <a-entity camera="active: true; fov: 58; near: 0.1; far: 60" position="0 0 0"></a-entity>
+                        <a-entity light="type: ambient; color: #e5d5ff; intensity: 1.35"></a-entity>
+                        <a-entity light="type: directional; color: #fff0d8; intensity: 2.25" position="-3 5 2"></a-entity>
+                        <a-entity light="type: directional; color: #a28cff; intensity: 1.4" position="3 1 -4"></a-entity>
+                        <a-entity id="targets"></a-entity>
+                        <a-entity id="showroom-object" visible="false"></a-entity>
+                    </a-scene>
+                </template>
             </div>
             <div class="effects" id="effects" aria-hidden="true"></div>
             <div class="hand-reticle" id="hand-reticle" hidden></div>
 
             <section class="menu" id="menu" aria-labelledby="title">
                 <div class="menu-art">
-                    <img src="Juegos/PatosEspaciales/portada.jpg" width="1440" height="810" alt="">
+                    <img src="Juegos/PatosEspaciales/portada.webp"
+                        srcset="Juegos/PatosEspaciales/portada-720.webp 720w, Juegos/PatosEspaciales/portada.webp 1440w"
+                        sizes="(max-width: 760px) calc(100vw - 24px), 1200px" width="1440" height="810" fetchpriority="high" alt="">
                 </div>
                 <div class="menu-content">
                     <p class="eyebrow">Arcade en realidad aumentada</p>
@@ -64,8 +68,8 @@
                         </ul>
                     </section>
                     <div class="actions">
-                        <button class="button button-primary" id="play" type="button" disabled>Jugar</button>
-                        <button class="button" id="showroom" type="button" disabled>Showroom 3D</button>
+                        <button class="button button-primary" id="play" type="button">Jugar</button>
+                        <button class="button" id="showroom" type="button">Showroom 3D</button>
                         <button class="button" type="button" data-game-history="patos-espaciales" aria-haspopup="dialog">Historial</button>
                     </div>
                 </div>
