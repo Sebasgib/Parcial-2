@@ -1,0 +1,5 @@
+Añade a mi web una sección de portafolio titulada “Modelado 3D”, con id="modelado-3d" y un enlace con ese nombre en el menú. Sigue la tipografía, los colores y el espaciado de las demás secciones. Bajo el título, escribe “El tomate y el puerro se encuentran con el caracol y su dron en un micro-mundo animado.”
+
+Integra el visor ya preparado en modelado-3d/index.html mediante un iframe con title="El Micro-Mundo, escena 3D animada" y loading="lazy". Ajusta su ruta a la URL pública real del proyecto, también si el sitio se publica en una subcarpeta. Usa ancho del 100 %, altura responsive entre 340 y 680 px y borde cero. Conserva el botón “Explorar en 3D”, la navegación táctil y la pausa de animaciones del visor. Si el proyecto usa una carpeta de archivos estáticos (por ejemplo public), coloca allí el directorio modelado-3d completo.
+
+Comprueba en la vista previa que la sección aparece en el menú, que se puede llegar con el teclado y que las rutas del visor, vendor/model-viewer.min.js y Escenario final.glb funcionan en la web publicada. Verifica en móvil y escritorio que el modelo abre, que se mueven los personajes y que la animación puede pausarse.

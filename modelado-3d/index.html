@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>El Micro-Mundo · Modelado 3D</title>
+<style>
+*{box-sizing:border-box}html,body{height:100%;margin:0}body{font:16px/1.45 system-ui,sans-serif;color:#eeeedd;background:#18251e}main{height:100%;min-height:240px;position:relative;isolation:isolate;overflow:hidden;background:radial-gradient(ellipse at 48% 44%,#3e5141,#1b2a21 62%,#121c17)}model-viewer{display:block;width:100%;height:100%;--progress-bar-color:#b8dd96}header{position:absolute;inset:16px auto auto 18px;pointer-events:none;background:#17241de8;color:#f1f2e8;padding:6px 12px;border-radius:6px}h1{font:500 1.1rem Georgia,serif;margin:0}footer{position:absolute;bottom:16px;left:16px;right:16px;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}button,#estado{border:0;border-radius:8px;padding:10px 16px;font:inherit}button{background:#ebf0d9;color:#17241a;cursor:pointer}button:focus-visible{outline:3px solid #d6ad63;outline-offset:2px}#estado{background:#17241def;color:white;font-size:.88rem}#estado:empty,[hidden]{display:none}
+</style>
+<main>
+  <model-viewer id="visor" camera-controls touch-action="pan-y" interaction-prompt="none" alt="Encuentro del tomate y el puerro con el caracol y su dron en El Micro-Mundo"></model-viewer>
+  <header><h1>El Micro-Mundo</h1></header>
+  <footer><span role="status" id="estado"></span><button id="abrir">Explorar en 3D</button><button id="animar" hidden>Pausar animación</button></footer>
+</main>
+<script type="module">
+const visor = document.querySelector('#visor');
+const estado = document.querySelector('#estado');
+const abrir = document.querySelector('#abrir');
+const animar = document.querySelector('#animar');
+const escena = './Escenario%20final.glb';
+let iniciado = false;
+function reproducir() {
+  visor.play();
+  if (!iniciado) {
+    for (const clip of visor.availableAnimations.slice(1)) visor.appendAnimation(clip);
+    iniciado = true;
+  }
+  animar.textContent = 'Pausar animación';
+}
+function fallo() {
+  estado.textContent = 'No se pudo cargar la escena. Verifica que modelado-3d/Escenario final.glb esté publicado.';
+  abrir.hidden = false;
+  abrir.textContent = 'Reintentar';
+  animar.hidden = true;
+}
+abrir.onclick = async () => {
+  abrir.hidden = true;
+  estado.textContent = 'Cargando el micro-mundo…';
+  try {
+    const respuesta = await fetch(escena, { method: 'HEAD' });
+    if (!respuesta.ok) throw new Error(`No se encontró la escena (HTTP ${respuesta.status}).`);
+    await import('./vendor/model-viewer.min.js');
+    customElements.get('model-viewer').dracoDecoderLocation = new URL('./vendor/draco/', location.href).href;
+    visor.src = escena;
+  } catch (error) {
+    console.error('No se pudo iniciar el visor 3D:', error);
+    fallo();
+  }
+};
+visor.addEventListener('error', () => { visor.removeAttribute('src'); iniciado = false; fallo(); });
+visor.addEventListener('load', () => {
+  estado.textContent = '';
+  if (visor.availableAnimations.length) {
+    animar.hidden = false;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) animar.textContent = 'Reproducir animación';
+    else reproducir();
+  }
+});
+animar.onclick = () => {
+  if (visor.paused) reproducir();
+  else { visor.pause(); animar.textContent = 'Reproducir animación'; }
+};
+</script>
+</html>
