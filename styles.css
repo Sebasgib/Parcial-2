@@ -558,6 +558,22 @@ body {
     border: 0;
 }
 
+.modelado-3d-characters {
+    margin-top: 24px;
+}
+
+.modelado-3d-characters h4 {
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    font-size: 1.25rem;
+}
+
+.modelado-3d-characters .project-card h5 {
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    font-size: 1.1rem;
+}
+
 .game-card {
     display: flex;
     flex-direction: column;
